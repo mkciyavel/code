@@ -297,36 +297,60 @@
                                         $username = isset($_POST['username']) ? trim($_POST['username']) : '';
                                         $password = isset($_POST['password']) ? trim($_POST['password']) : '';
                                         $password2 = isset($_POST['password2']) ? trim($_POST['password2']) : '';
+                                        $mail = isset($_POST['email']) ? trim($_POST['email']) : '';
                                         $errors = array();
                                         $success = false;
 
-                                        if($pw == $pw2)
+                                        if($username === '')
                                         {
-                                            $pw = ($pw);
+                                            $error = 'Der Accountname ist erforderlich!';
+                                        }
+                                        else if($password === '' || $password !== $password2)
+                                        {
+                                            $error = 'Das Passwort war nicht korrekt!';
+                                        }
+                                        else
+                                        {
+                                            $user = str_replace("'", "''", $username);
+                                            $pw = str_replace("'", "''", $password);
+                                            $mailSql = str_replace("'", "''", $mail);
                                             $sql1 = "SELECT dwUserID FROM TGLOBAL_GSP.dbo.TACCOUNT WHERE szUserID = '".$user."'";
                                             $q1 = odbc_exec($gcon, $sql1);
-                                            if(odbc_num_rows(�q1) == 0)
+                                            if($q1 === false)
+                                            {
+                                                $error = 'Der Account konnte nicht erstellt werden!';
+                                            }
+                                            else if(odbc_num_rows($q1) == 0)
                                             {
                                                 $sql0 = "SELECT MAX(dwUserID) AS Result FROM TGLOBAL_GSP.dbo.TACCOUNT";
                                                 $q0 = odbc_exec($gcon, $sql0);
-                                                $count0 = odbc_fetch_array($q0);
-                                                $count = $count0['Result'];
-                                                $sql = "INSERT INTO TGLOBAL_GSP.dbo.TACCOUNT(dwUserID, szUserID, szPasswd, bCheck, szMail)
-                                                VALUES($count + 1, '".$user."', '".$pw."', '1', '".$mail."')";
-                                                $q = odbc_exec($gcon, $sql);
-
-                                                echo '<p>Der Account wurde erfolgreich erstellt!<br /><br /><a href="./admin_cp.php">Zur&uuml;ck zum Admin-Panel</a></p>';
-                                                echo '<meta http-equiv="refresh" content="1; URL=./admin_cp.php">';
-                                                $form = false;
+                                                $count0 = ($q0 !== false) ? odbc_fetch_array($q0) : false;
+                                                if(!is_array($count0) || !array_key_exists('Result', $count0))
+                                                {
+                                                    $error = 'Der Account konnte nicht erstellt werden!';
+                                                }
+                                                else
+                                                {
+                                                    $count = (int)$count0['Result'];
+                                                    $sql = "INSERT INTO TGLOBAL_GSP.dbo.TACCOUNT(dwUserID, szUserID, szPasswd, bCheck, szMail)
+                                                    VALUES(".($count + 1).", '".$user."', '".$pw."', '1', '".$mailSql."')";
+                                                    $q = odbc_exec($gcon, $sql);
+                                                    if($q === false)
+                                                    {
+                                                        $error = 'Der Account konnte nicht erstellt werden!';
+                                                    }
+                                                    else
+                                                    {
+                                                        echo '<p>Der Account wurde erfolgreich erstellt!<br /><br /><a href="./admin_cp.php">Zur&uuml;ck zum Admin-Panel</a></p>';
+                                                        echo '<meta http-equiv="refresh" content="1; URL=./admin_cp.php">';
+                                                        $form = false;
+                                                    }
+                                                }
                                             }
                                             else
                                             {
                                                 $error = 'Der Accountname existiert bereits!';
                                             }
-                                        }
-                                        else
-                                        {
-                                            $error = 'Das Passwort war nicht korrekt!';
                                         }
                                     }
 
@@ -339,6 +363,7 @@
                                         <label>Accountname <small><em>(required)</em></small></label>
                                         <input type="text" name="username" id="username" />
                                         <label>eMail-Adresse </label>
+                                        <input type="text" name="email" id="email" />
                                         <label>Passwort <small><em>(required)</em></small></label>
                                         <input type="password" name="password" id="password" />
                                         <label>Passwort wiederholen <small><em>(required)</em></small></label>
