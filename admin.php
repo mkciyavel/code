@@ -855,37 +855,83 @@
                                         }
                                         if(isset($_GET['action']) && $_GET['action'] == 10 && $session_right > 1)
                                         {
+                                            $sqlCur = "SELECT dwGold, dwSilver, dwCooper FROM TGAME_GSP.dbo.TCHARTABLE WHERE dwCharID = '".$cID."'";
+                                            $qCur = odbc_exec($gcon, $sqlCur);
+                                            $cur = ($qCur !== false) ? odbc_fetch_array($qCur) : false;
+                                            $saved = false;
+
                                             if(isset($_POST['newgold']))
                                             {
-                                                $newgold = $_POST['newgold'];
-                                                $newsilver = $_POST['newsilver'];
-                                                $newcooper = $_POST['newcooper'];
-                                                $newgold = mysql_real_escape_string($newgold);
-                                                $newsilver = mysql_real_escape_string($newsilver);
-                                                $newcooper = mysql_real_escape_string($newcooper);
+                                                $newgold = (isset($_POST['newgold']) && is_string($_POST['newgold'])) ? trim($_POST['newgold']) : '';
+                                                $newsilver = (isset($_POST['newsilver']) && is_string($_POST['newsilver'])) ? trim($_POST['newsilver']) : '';
+                                                $newcooper = (isset($_POST['newcooper']) && is_string($_POST['newcooper'])) ? trim($_POST['newcooper']) : '';
 
-                                                $sql = "UPDATE TGAME_GSP.dbo.TCHARTABLE SET dwGold = '".$newgold."', dwSilver = '".$newsilver."', dwCooper = '".$newcooper."'
-                                                WHERE dwCharID = '".$cID."'";
-                                                $q = odbc_exec($gcon, $sql);
+                                                $moneyOk = preg_match('/^(?:0|[1-9]\d*)$/', $newgold) === 1
+                                                    && preg_match('/^(?:0|[1-9]\d*)$/', $newsilver) === 1
+                                                    && preg_match('/^(?:0|[1-9]\d*)$/', $newcooper) === 1
+                                                    && strlen($newgold) <= 10 && strlen($newsilver) <= 10 && strlen($newcooper) <= 10
+                                                    && (int)$newgold <= 2147483647
+                                                    && (int)$newsilver <= 2147483647
+                                                    && (int)$newcooper <= 2147483647;
 
-                                                echo '<p>Das Geld wurde erfolgreich ge&auml;ndert!<br />
-                                                <a href="admin_cp.php?mode=8&cid='.$cID.'">&raquo; Zur&uuml;ck zur Charakter&uuml;bersicht</a></p>';
-                                                echo '<meta http-equiv="refresh" content="1; URL=./admin_cp.php?mode=8&cid='.$cID.'">';
+                                                if(!$cur)
+                                                {
+                                                    $error = 'Der Charakter existiert nicht!';
+                                                }
+                                                else if(!$moneyOk)
+                                                {
+                                                    $error = 'Gold, Silber und Bronze m&uuml;ssen als ganze Zahl angegeben werden. Leere Felder w&uuml;rden das vorhandene Geld l&ouml;schen.';
+                                                }
+                                                else
+                                                {
+                                                    $newgold = (string)(int)$newgold;
+                                                    $newsilver = (string)(int)$newsilver;
+                                                    $newcooper = (string)(int)$newcooper;
+
+                                                    $sql = "UPDATE TGAME_GSP.dbo.TCHARTABLE SET dwGold = '".$newgold."', dwSilver = '".$newsilver."', dwCooper = '".$newcooper."'
+                                                    WHERE dwCharID = '".$cID."'";
+                                                    $q = odbc_exec($gcon, $sql);
+
+                                                    if($q === false)
+                                                    {
+                                                        $error = 'Das Geld konnte nicht ge&auml;ndert werden!';
+                                                    }
+                                                    else
+                                                    {
+                                                        echo '<p>Das Geld wurde erfolgreich ge&auml;ndert!<br />
+                                                        <a href="admin_cp.php?mode=8&cid='.$cID.'">&raquo; Zur&uuml;ck zur Charakter&uuml;bersicht</a></p>';
+                                                        echo '<meta http-equiv="refresh" content="1; URL=./admin_cp.php?mode=8&cid='.$cID.'">';
+                                                        $saved = true;
+                                                    }
+                                                }
                                             }
-                                            if(!isset($_POST['newgold']))
+
+                                            if(!$saved)
                                             {
+                                                $goldVal = isset($newgold) ? $newgold : (($cur && isset($cur['dwGold'])) ? $cur['dwGold'] : '');
+                                                $silverVal = isset($newsilver) ? $newsilver : (($cur && isset($cur['dwSilver'])) ? $cur['dwSilver'] : '');
+                                                $cooperVal = isset($newcooper) ? $newcooper : (($cur && isset($cur['dwCooper'])) ? $cur['dwCooper'] : '');
+                                                $goldVal = htmlspecialchars((string)$goldVal, ENT_QUOTES, 'UTF-8');
+                                                $silverVal = htmlspecialchars((string)$silverVal, ENT_QUOTES, 'UTF-8');
+                                                $cooperVal = htmlspecialchars((string)$cooperVal, ENT_QUOTES, 'UTF-8');
+
                                                 echo '<h3><a href="admin_cp.php?mode=8&cid='.$cID.'">&laquo; Zur&uuml;ck zur Charakter&uuml;bersicht</a></h3><br />';
                                                 echo '
                                                  <form action="admin_cp.php?mode=8&action=10&cid='.$cID.'" method="post">
                                                  <label>Gold </label>
-                                                 <input type="text" name="newgold" id="newgold" />
+                                                 <input type="text" name="newgold" id="newgold" value="'.$goldVal.'" />
                                                  <label>Silber </label>
-                                                 <input type="text" name="newsilver" id="newsilver" />
+                                                 <input type="text" name="newsilver" id="newsilver" value="'.$silverVal.'" />
                                                  <label>Bronze </label>
-                                                 <input type="text" name="newcooper" id="newcooper" /><br /><br />
+                                                 <input type="text" name="newcooper" id="newcooper" value="'.$cooperVal.'" /><br /><br />
                                                  <input type="submit" value="Geld &uuml;bernehmen" class="read_more2" />
                                                  </form>
                                                 ';
+
+                                                if(isset($error))
+                                                {
+                                                    echo '<br /><p>'.$error.'</p>';
+                                                }
                                             }
                                         }
                                         if(isset($_GET['action']) && $_GET['action'] == 11 && $session_right > 1)
