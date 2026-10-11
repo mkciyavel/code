@@ -1915,7 +1915,6 @@
                                         $hot = $dat['hot'];
 
                                         $img = str_replace('.png', '', $img);
-                                        $text = nl2br($text);
 
                                         echo '<h3><a href="admin_cp.php">&laquo; Zur&uuml;ck zum Admin-Panel</a></h3><br />';
                                         echo '<h4>News bearbeiten</h4>';
@@ -2003,7 +2002,6 @@
                                         $img = $dat['image'];
 
                                         $img = str_replace('.png', '', $img);
-                                        $text = nl2br($text);
 
                                         echo '<h3><a href="admin_cp.php">&laquo; Zur&uuml;ck zum Admin-Panel</a></h3><br />';
                                         echo '<h4>(Slider) News bearbeiten</h4>';
