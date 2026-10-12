@@ -2145,7 +2145,7 @@
                       <?php
                         if(isset($_GET['mode']) && $_GET['mode'] == 9 && isset($_GET['h']) && !isset($_POST['text']) && !isset($_GET['action']))
                         {
-                            $q00 = mysql_query("SELECT UserID FROM tickets WHERE UserID = '".$session_id."' AND hash = '".$hash."'");
+                            $q00 = mysql_query("SELECT UserID FROM tickets WHERE hash = '".$hash."' AND Solved = 0");
                             $count = mysql_num_rows($q00);
                             $pages = $count / $entry;
                             if($page > 1)
