@@ -1531,11 +1531,11 @@
                                                 $q = mysql_query($sql);
                                                 $dat = mysql_fetch_assoc($q);
 
-                                                $itemID = $dat['itemID'];
-                                                $itemName = $dat['itemName'];
-                                                $amount = $dat['amount'];
-                                                $text = $dat['text'];
-                                                $price = $dat['price'];
+                                                $itemID = htmlspecialchars((string)$dat['itemID'], ENT_QUOTES, 'UTF-8');
+                                                $itemName = htmlspecialchars((string)$dat['itemName'], ENT_QUOTES, 'UTF-8');
+                                                $amount = htmlspecialchars((string)$dat['amount'], ENT_QUOTES, 'UTF-8');
+                                                $text = htmlspecialchars((string)$dat['text'], ENT_QUOTES, 'UTF-8');
+                                                $price = htmlspecialchars((string)$dat['price'], ENT_QUOTES, 'UTF-8');
 
                                                 echo '<h3><a href="admin_cp.php?mode=10&action=1">&laquo; Zur&uuml;ck zur Item-&Uuml;bersicht</a></h3><br />';
                                                 echo '<h4>Item bearbeiten</h4>
@@ -1916,6 +1916,8 @@
 
                                         $img = str_replace('.png', '', $img);
                                         $text = nl2br($text);
+                                        $title = htmlspecialchars((string)$title, ENT_QUOTES, 'UTF-8');
+                                        $img = htmlspecialchars((string)$img, ENT_QUOTES, 'UTF-8');
 
                                         echo '<h3><a href="admin_cp.php">&laquo; Zur&uuml;ck zum Admin-Panel</a></h3><br />';
                                         echo '<h4>News bearbeiten</h4>';
@@ -1932,7 +1934,7 @@
                                             <input type="radio" name="type" id="type" value="1" checked="true" /> Hot';
                                         echo '
                                         <label>Bild-ID <small><em>(required)</em></small></label>
-                                        <input type="text" name="img" id="img" value='.$img.' />
+                                        <input type="text" name="img" id="img" value="'.$img.'" />
                                         <label>Text <small><em>(required)</em></small></label>
                                         <textarea cols="65" name="text" id="text">'.$text.'</textarea><br /><br />
                                         <input type="submit" value="News &auml;ndern" class="read_more2" />
@@ -2004,6 +2006,8 @@
 
                                         $img = str_replace('.png', '', $img);
                                         $text = nl2br($text);
+                                        $title = htmlspecialchars((string)$title, ENT_QUOTES, 'UTF-8');
+                                        $img = htmlspecialchars((string)$img, ENT_QUOTES, 'UTF-8');
 
                                         echo '<h3><a href="admin_cp.php">&laquo; Zur&uuml;ck zum Admin-Panel</a></h3><br />';
                                         echo '<h4>(Slider) News bearbeiten</h4>';
@@ -2012,7 +2016,7 @@
                                         <label>Titel <small><em>(required)</em></small></label>
                                         <input type="text" name="title" id="title" value="'.$title.'" />
                                         <label>Bild-ID <small><em>(required)</em></small></label>
-                                        <input type="text" name="img" id="img" value='.$img.' />
+                                        <input type="text" name="img" id="img" value="'.$img.'" />
                                         <label>Text <small><em>(required)</em></small></label>
                                         <textarea cols="65" name="text" id="text">'.$text.'</textarea><br /><br />
                                         <input type="submit" value="News &auml;ndern" class="read_more2" />
