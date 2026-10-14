@@ -601,42 +601,81 @@
                                     {
                                         $form = false;
 
-                                        $userID = $_GET['id'];
+                                        $userID = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 
-                                        $sql = "SELECT szUserID FROM TGLOBAL_GSP.dbo.TACCOUNT WHERE dwUserID = '".$userID."'";
-                                        $q = odbc_exec($gcon, $sql);
-                                        $dat = odbc_fetch_array($q);
-                                        $userName = $dat['szUserID'];
-
-                                        $sql1 = "SELECT dwSeq FROM TGLOBAL_GSP.dbo.TUSERPROTECTED WHERE dwUserID = '".$userID."'";
-                                        $q1 = odbc_exec($gcon, $sql1);
-                                        $banned = odbc_num_rows($q1);
-
-                                        if($banned == 0)
+                                        if($userID <= 0)
                                         {
-                                            $sql0 = "INSERT INTO TGLOBAL_GSP.dbo.TUSERPROTECTED (dwUserID, bBlockType, bEternal)VALUES('".$userID."', '1', '1')";
-                                            $q0 = odbc_exec($gcon, $sql0);
-
-                                            echo '<p>Der Account von <i>'.$userName.'</i> wurde erfolgreich <b>gebannt</b>!<br />
-                                            <a href="./admin_cp.php?mode=7&id='.$userID.'">Zur&uuml;ck zur Account&uuml;bersicht</a></p>';
-                                            echo '<meta http-equiv="refresh" content="2; URL=./admin_cp.php?mode=7&id='.$userID.'">';
-
-                                            echo '<form action="admin_cp.php?mode=7&action=4&id='.$userID.'" method="post">
-                                            <input type="submit" value="Account entbannen" class="read_more2" />
-                                            </form>';
+                                            echo '<p>Der angegebene Account existiert nicht!</p>';
                                         }
                                         else
                                         {
-                                            $sql0 = "DELETE FROM TGLOBAL_GSP.dbo.TUSERPROTECTED WHERE dwUserID = '".$userID."'";
-                                            $q0 = odbc_exec($gcon, $sql0);
+                                            $sql = "SELECT szUserID FROM TGLOBAL_GSP.dbo.TACCOUNT WHERE dwUserID = ".$userID;
+                                            $q = odbc_exec($gcon, $sql);
+                                            $dat = odbc_fetch_array($q);
+                                            $userName = ($dat && isset($dat['szUserID'])) ? $dat['szUserID'] : '';
 
-                                            echo '<p>Der Account von <i>'.$userName.'</i> wurde erfolgreich <b>entbannt</b>!<br />
-                                            <a href="./admin_cp.php?mode=7&id='.$userID.'">Zur&uuml;ck zur Account&uuml;bersicht</a></p>';
-                                            echo '<meta http-equiv="refresh" content="2; URL=./admin_cp.php?mode=7&id='.$userID.'">';
+                                            if($userName === '' || $userName === null)
+                                            {
+                                                echo '<p>Der angegebene Account existiert nicht!</p>';
+                                            }
+                                            else
+                                            {
+                                                $safeName = htmlspecialchars($userName, ENT_QUOTES, 'UTF-8');
+                                                $sql1 = "SELECT dwSeq FROM TGLOBAL_GSP.dbo.TUSERPROTECTED WHERE dwUserID = ".$userID;
+                                                $q1 = odbc_exec($gcon, $sql1);
+                                                $banned = odbc_num_rows($q1);
+                                                $intent = isset($_POST['intent']) ? $_POST['intent'] : '';
 
-                                            echo '<form action="admin_cp.php?mode=7&action=4&id='.$userID.'" method="post">
-                                            <input type="submit" value="Account bannen" class="read_more2" />
-                                            </form>';
+                                                if($intent === 'ban' || $intent === 'unban')
+                                                {
+                                                    if($intent === 'ban' && $banned == 0)
+                                                    {
+                                                        $sql0 = "INSERT INTO TGLOBAL_GSP.dbo.TUSERPROTECTED (dwUserID, bBlockType, bEternal) VALUES(".$userID.", '1', '1')";
+                                                        $q0 = odbc_exec($gcon, $sql0);
+
+                                                        echo '<p>Der Account von <i>'.$safeName.'</i> wurde erfolgreich <b>gebannt</b>!<br />
+                                                        <a href="./admin_cp.php?mode=7&id='.$userID.'">Zur&uuml;ck zur Account&uuml;bersicht</a></p>';
+                                                    }
+                                                    else if($intent === 'unban' && $banned != 0)
+                                                    {
+                                                        $sql0 = "DELETE FROM TGLOBAL_GSP.dbo.TUSERPROTECTED WHERE dwUserID = ".$userID;
+                                                        $q0 = odbc_exec($gcon, $sql0);
+
+                                                        echo '<p>Der Account von <i>'.$safeName.'</i> wurde erfolgreich <b>entbannt</b>!<br />
+                                                        <a href="./admin_cp.php?mode=7&id='.$userID.'">Zur&uuml;ck zur Account&uuml;bersicht</a></p>';
+                                                    }
+                                                    else if($intent === 'ban')
+                                                    {
+                                                        echo '<p>Der Account von <i>'.$safeName.'</i> ist bereits <b>gebannt</b>!<br />
+                                                        <a href="./admin_cp.php?mode=7&id='.$userID.'">Zur&uuml;ck zur Account&uuml;bersicht</a></p>';
+                                                    }
+                                                    else
+                                                    {
+                                                        echo '<p>Der Account von <i>'.$safeName.'</i> ist nicht gebannt!<br />
+                                                        <a href="./admin_cp.php?mode=7&id='.$userID.'">Zur&uuml;ck zur Account&uuml;bersicht</a></p>';
+                                                    }
+
+                                                    echo '<meta http-equiv="refresh" content="2; URL=./admin_cp.php?mode=7&id='.$userID.'">';
+                                                }
+                                                else if($banned == 0)
+                                                {
+                                                    echo '<h4>Account bannen: '.$safeName.'</h4>
+                                                    <form action="admin_cp.php?mode=7&action=4&id='.$userID.'" method="post">
+                                                    <input type="hidden" name="intent" value="ban" />
+                                                    <input type="submit" value="Account bannen" class="read_more2" />
+                                                    </form>
+                                                    <p><a href="./admin_cp.php?mode=7&id='.$userID.'">Zur&uuml;ck zur Account&uuml;bersicht</a></p>';
+                                                }
+                                                else
+                                                {
+                                                    echo '<h4>Account entbannen: '.$safeName.'</h4>
+                                                    <form action="admin_cp.php?mode=7&action=4&id='.$userID.'" method="post">
+                                                    <input type="hidden" name="intent" value="unban" />
+                                                    <input type="submit" value="Account entbannen" class="read_more2" />
+                                                    </form>
+                                                    <p><a href="./admin_cp.php?mode=7&id='.$userID.'">Zur&uuml;ck zur Account&uuml;bersicht</a></p>';
+                                                }
+                                            }
                                         }
                                     }
 
