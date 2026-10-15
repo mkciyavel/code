@@ -668,7 +668,21 @@
                                         $cID = $_GET['cid'];
                                         $cID = mysql_real_escape_string($cID);
 
-                                        if(isset($_GET['action']) && $_GET['action'] == 1 && $session_right > 1)
+                                        $blockOnlineEdit = false;
+                                        if(isset($_GET['action']) && $session_right > 1)
+                                        {
+                                            $sqlOnline = "SELECT dwCharID FROM TGLOBAL_GSP.dbo.TCURRENTUSER WHERE dwCharID = '".$cID."'";
+                                            $qOnline = odbc_exec($gcon, $sqlOnline);
+                                            $onlineCount = ($qOnline !== false) ? odbc_num_rows($qOnline) : 0;
+                                            if($onlineCount != 0)
+                                            {
+                                                $blockOnlineEdit = true;
+                                                echo '<p>Der Charakter muss ausgeloggt sein, um ihn zu bearbeiten.<br />
+                                                <a href="admin_cp.php?mode=8&cid='.$cID.'">&raquo; Zur&uuml;ck zur Charakter&uuml;bersicht</a></p>';
+                                            }
+                                        }
+
+                                        if(isset($_GET['action']) && $_GET['action'] == 1 && $session_right > 1 && !$blockOnlineEdit)
                                         {
                                             if(isset($_POST['newtp']))
                                             {
@@ -694,7 +708,7 @@
                                                 ';
                                             }
                                         }
-                                        if(isset($_GET['action']) && $_GET['action'] == 2 && $session_right > 1)
+                                        if(isset($_GET['action']) && $_GET['action'] == 2 && $session_right > 1 && !$blockOnlineEdit)
                                         {
                                             if(isset($_POST['newup']))
                                             {
@@ -720,7 +734,7 @@
                                                 ';
                                             }
                                         }
-                                        if(isset($_GET['action']) && $_GET['action'] == 3 && $session_right > 1)
+                                        if(isset($_GET['action']) && $_GET['action'] == 3 && $session_right > 1 && !$blockOnlineEdit)
                                         {
                                             if(isset($_POST['newexp']))
                                             {
@@ -746,7 +760,7 @@
                                                 ';
                                             }
                                         }
-                                        if(isset($_GET['action']) && $_GET['action'] == 4 && $session_right > 1)
+                                        if(isset($_GET['action']) && $_GET['action'] == 4 && $session_right > 1 && !$blockOnlineEdit)
                                         {
                                             if(isset($_POST['newsp']))
                                             {
@@ -772,7 +786,7 @@
                                                 ';
                                             }
                                         }
-                                        if(isset($_GET['action']) && $_GET['action'] == 5 && $session_right > 1)
+                                        if(isset($_GET['action']) && $_GET['action'] == 5 && $session_right > 1 && !$blockOnlineEdit)
                                         {
                                             if(isset($_POST['newlvl']))
                                             {
@@ -798,7 +812,7 @@
                                                 ';
                                             }
                                         }
-                                        if(isset($_GET['action']) && $_GET['action'] == 6 && $session_right > 1)
+                                        if(isset($_GET['action']) && $_GET['action'] == 6 && $session_right > 1 && !$blockOnlineEdit)
                                         {
                                             if(isset($_POST['newrace']))
                                             {
@@ -826,7 +840,7 @@
                                                 ';
                                             }
                                         }
-                                        if(isset($_GET['action']) && $_GET['action'] == 8 && $session_right > 1)
+                                        if(isset($_GET['action']) && $_GET['action'] == 8 && $session_right > 1 && !$blockOnlineEdit)
                                         {
                                             if(isset($_POST['newsex']))
                                             {
@@ -853,7 +867,7 @@
                                                 ';
                                             }
                                         }
-                                        if(isset($_GET['action']) && $_GET['action'] == 10 && $session_right > 1)
+                                        if(isset($_GET['action']) && $_GET['action'] == 10 && $session_right > 1 && !$blockOnlineEdit)
                                         {
                                             if(isset($_POST['newgold']))
                                             {
@@ -888,7 +902,7 @@
                                                 ';
                                             }
                                         }
-                                        if(isset($_GET['action']) && $_GET['action'] == 11 && $session_right > 1)
+                                        if(isset($_GET['action']) && $_GET['action'] == 11 && $session_right > 1 && !$blockOnlineEdit)
                                         {
                                             if(isset($_POST['newname']))
                                             {
