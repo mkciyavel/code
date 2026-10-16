@@ -1755,36 +1755,52 @@
 
                                     if(isset($_POST['username']))
                                     {
-                                        $user = $_POST['username'];
-                                        $itemID = $_POST['itemID'];
-                                        $amount = $_POST['amount'];
-                                        $title = $_POST['title'];
-                                        $text = $_POST['text'];
+                                        $user = (isset($_POST['username']) && is_string($_POST['username'])) ? trim($_POST['username']) : '';
+                                        $itemID = (isset($_POST['itemID']) && is_string($_POST['itemID'])) ? trim($_POST['itemID']) : '';
+                                        $amount = (isset($_POST['amount']) && is_string($_POST['amount'])) ? trim($_POST['amount']) : '';
+                                        $title = (isset($_POST['title']) && is_string($_POST['title'])) ? trim($_POST['title']) : '';
+                                        $text = (isset($_POST['text']) && is_string($_POST['text'])) ? trim($_POST['text']) : '';
 
-                                        $user = mysql_real_escape_string($user);
-                                        $itemID = mysql_real_escape_string($itemID);
-                                        $amount = mysql_real_escape_string($amount);
-                                        $title = mysql_real_escape_string($title);
-                                        $text = mysql_real_escape_string($text);
+                                        $itemOk = preg_match('/^(?:0|[1-9]\d*)$/', $itemID) === 1
+                                            && strlen($itemID) <= 10 && (int)$itemID <= 2147483647;
+                                        $amountOk = preg_match('/^(?:0|[1-9]\d*)$/', $amount) === 1
+                                            && strlen($amount) <= 10 && (int)$amount <= 2147483647;
 
-                                        $title = htmlentities($title);
-                                        $text = htmlentities($text);
-
-                                        $sql0 = "SELECT dwCharID FROM TGAME_GSP.dbo.TCHARTABLE WHERE szName = '".$user."'";
-                                        $q0 = odbc_exec($gcon, $sql0);
-                                        if(odbc_num_rows($q0) != 0)
+                                        if(!$itemOk || !$amountOk)
                                         {
-                                            $sql = "EXEC TGAME_GSP.dbo.TEventItemGive
-                                            @szName = '".$user."' , @wItemID = '".$itemID."', @bCount = '".$amount."', @szMessage = '".$text."', @szTitle = '".$title."'";
-                                            $q = odbc_exec($gcon, $sql);
-
-                                            echo '<p>Das Item wurde erfolgreich verschickt!<br /><a href="admin_cp.php">&raquo; Zur&uuml;ck zum Admin-Panel</a></p>';
-                                            echo '<meta http-equiv="refresh" content="1; URL=./admin_cp.php">';
-                                            $form = false;
+                                            $error = 'Item-ID und Menge m&uuml;ssen ganze Zahlen sein.';
                                         }
                                         else
                                         {
-                                            $error = 'Der Charakter existiert nicht!';
+                                            $sqlUser = str_replace("'", "''", $user);
+                                            $sqlTitle = str_replace("'", "''", $title);
+                                            $sqlText = str_replace("'", "''", $text);
+                                            $itemID = (string)(int)$itemID;
+                                            $amount = (string)(int)$amount;
+
+                                            $sql0 = "SELECT dwCharID FROM TGAME_GSP.dbo.TCHARTABLE WHERE szName = '".$sqlUser."'";
+                                            $q0 = odbc_exec($gcon, $sql0);
+                                            if($q0 !== false && odbc_num_rows($q0) != 0)
+                                            {
+                                                $sql = "EXEC TGAME_GSP.dbo.TEventItemGive
+                                                @szName = '".$sqlUser."' , @wItemID = '".$itemID."', @bCount = '".$amount."', @szMessage = '".$sqlText."', @szTitle = '".$sqlTitle."'";
+                                                $q = odbc_exec($gcon, $sql);
+
+                                                if($q === false)
+                                                {
+                                                    $error = 'Das Item konnte nicht verschickt werden!';
+                                                }
+                                                else
+                                                {
+                                                    echo '<p>Das Item wurde erfolgreich verschickt!<br /><a href="admin_cp.php">&raquo; Zur&uuml;ck zum Admin-Panel</a></p>';
+                                                    echo '<meta http-equiv="refresh" content="1; URL=./admin_cp.php">';
+                                                    $form = false;
+                                                }
+                                            }
+                                            else
+                                            {
+                                                $error = 'Der Charakter existiert nicht!';
+                                            }
                                         }
                                     }
 
