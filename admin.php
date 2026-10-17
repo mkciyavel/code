@@ -1409,12 +1409,29 @@
                                     {
                                         $hash = $_GET['h'];
 
-                                        $sql = "UPDATE tickets SET Solved = 1 WHERE hash = '".$hash."'";
-                                        $q = mysql_query($sql);
+                                        if(!is_string($hash))
+                                        {
+                                            echo '<p>Das Ticket konnte nicht als gel&ouml;st markiert werden!<br />
+                                            <a href="./admin_cp.php">&raquo; Zur&uuml;ck zum Admin-Panel</a></p>';
+                                        }
+                                        else
+                                        {
+                                            $hashSql = mysql_real_escape_string($hash);
+                                            $sql = "UPDATE tickets SET Solved = 1 WHERE hash = '".$hashSql."'";
+                                            $q = mysql_query($sql);
 
-                                        echo '<p>Das Ticket wurde als gel&ouml;st markiert!<br />
-                                        <a href="./admin_cp.php">&raquo; Zur&uuml;ck zum Admin-Panel</a></p>';
-                                        echo '<meta http-equiv="refresh" content="1; URL=./admin_cp.php">';
+                                            if($q === false)
+                                            {
+                                                echo '<p>Das Ticket konnte nicht als gel&ouml;st markiert werden!<br />
+                                                <a href="./admin_cp.php">&raquo; Zur&uuml;ck zum Admin-Panel</a></p>';
+                                            }
+                                            else
+                                            {
+                                                echo '<p>Das Ticket wurde als gel&ouml;st markiert!<br />
+                                                <a href="./admin_cp.php">&raquo; Zur&uuml;ck zum Admin-Panel</a></p>';
+                                                echo '<meta http-equiv="refresh" content="1; URL=./admin_cp.php">';
+                                            }
+                                        }
                                         $form = false;
                                     }
 
@@ -1423,29 +1440,42 @@
                                         $text = $_POST['text'];
                                         $md5 = $_GET['h'];
 
-                                        if($text != null)
+                                        if(is_string($text) && $text != '' && is_string($md5))
                                         {
                                             $date = date('Y-m-d H:i:s');
 
                                             $text = htmlentities($text);
+                                            $textSql = mysql_real_escape_string($text);
+                                            $hashSql = mysql_real_escape_string($md5);
+                                            $userSql = mysql_real_escape_string((string)$session_user);
+                                            $sessionSql = (int)$session_id;
 
                                             $sql = "INSERT INTO tickets (UserID, UserName, Text, Hash, Date)
-                                            VALUES(".$session_id.", '".$session_user."', '".$text."', '".$md5."', '".$date."')";
+                                            VALUES(".$sessionSql.", '".$userSql."', '".$textSql."', '".$hashSql."', '".$date."')";
                                             $q = mysql_query($sql);
 
-                                            $sql0 = "UPDATE tickets SET AnswerID = '".$session_id."' WHERE hash = '".$md5."'";
-                                            $q0 = mysql_query($sql0);
+                                            if($q === false)
+                                            {
+                                                echo '<p>Die Antwort konnte nicht gespeichert werden!<br />
+                                                <a href="./admin_cp.php?mode=9&h='.rawurlencode($md5).'">&raquo; Zur&uuml;ck zum Ticket</a></p>';
+                                            }
+                                            else
+                                            {
+                                                $sql0 = "UPDATE tickets SET AnswerID = '".$sessionSql."' WHERE hash = '".$hashSql."'";
+                                                $q0 = mysql_query($sql0);
 
-                                            echo '<p>Die Antwort wurde erfolgreich erstellt!<br />
-                                            <a href="./admin_cp.php?mode=9&h='.$md5.'">&raquo; Zur&uuml;ck zum Ticket</a><br />
-                                            <a href="./admin_cp.php">&raquo; Zur&uuml;ck zum Admin-Panel</a></p>';
-                                            echo '<meta http-equiv="refresh" content="1; URL=./admin_cp.php?mode=9&h='.$md5.'">';
-                                            $form = false;
+                                                echo '<p>Die Antwort wurde erfolgreich erstellt!<br />
+                                                <a href="./admin_cp.php?mode=9&h='.rawurlencode($md5).'">&raquo; Zur&uuml;ck zum Ticket</a><br />
+                                                <a href="./admin_cp.php">&raquo; Zur&uuml;ck zum Admin-Panel</a></p>';
+                                                echo '<meta http-equiv="refresh" content="1; URL=./admin_cp.php?mode=9&h='.rawurlencode($md5).'">';
+                                                $form = false;
+                                            }
                                         }
 
                                         else
                                         {
-                                            $error = 'Es wurde kein Text eingegeben!';
+                                            echo '<p>Es wurde kein Text eingegeben!<br />
+                                            <a href="./admin_cp.php?mode=9">&raquo; Zur&uuml;ck zu den Tickets</a></p>';
                                         }
                                     }
 
@@ -2058,10 +2088,11 @@
                             $entry = 4;
                             $start = $page * $entry - $entry;
 
-                            $sql = "SELECT username, text, date, solved FROM tickets WHERE hash = '".$hash."' AND Solved = 0 ORDER BY date DESC LIMIT $start, $entry";
+                            $hashSql = (isset($hash) && is_string($hash)) ? mysql_real_escape_string($hash) : '';
+                            $sql = "SELECT username, text, date, solved FROM tickets WHERE hash = '".$hashSql."' AND Solved = 0 ORDER BY date DESC LIMIT $start, $entry";
                             $q = mysql_query($sql);
 
-                            $sql0 = "SELECT title FROM tickets WHERE hash = '".$hash."' AND Solved = 0";
+                            $sql0 = "SELECT title FROM tickets WHERE hash = '".$hashSql."' AND Solved = 0";
                             $q0 = mysql_query($sql0);
 
                             $dat0 = mysql_fetch_assoc($q0);
@@ -2145,7 +2176,8 @@
                       <?php
                         if(isset($_GET['mode']) && $_GET['mode'] == 9 && isset($_GET['h']) && !isset($_POST['text']) && !isset($_GET['action']))
                         {
-                            $q00 = mysql_query("SELECT UserID FROM tickets WHERE UserID = '".$session_id."' AND hash = '".$hash."'");
+                            $hashSql = (isset($hash) && is_string($hash)) ? mysql_real_escape_string($hash) : '';
+                            $q00 = mysql_query("SELECT UserID FROM tickets WHERE UserID = '".$session_id."' AND hash = '".$hashSql."'");
                             $count = mysql_num_rows($q00);
                             $pages = $count / $entry;
                             if($page > 1)
