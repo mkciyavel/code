@@ -1884,11 +1884,13 @@
 
                                         $title = mysql_real_escape_string($title);
                                         $img = mysql_real_escape_string($img);
+                                        // The edit form posts the entity-encoded body already stored in news.
+                                        // Decode before htmlentities so a second save does not turn &uuml; into &amp;uuml;.
+                                        $text = html_entity_decode($text);
                                         $text = mysql_real_escape_string($text);
+                                        $text = htmlentities($text);
 
                                         $img = $img . ".png";
-
-                                        $text = htmlentities($text);
 
                                         $sql = "UPDATE news SET hot = '".$type."', title = '".$title."', image = '".$img."', text = '".$text."' WHERE id = ".$id."";
                                         $q = mysql_query($sql);
@@ -1973,11 +1975,12 @@
 
                                         $title = mysql_real_escape_string($title);
                                         $img = mysql_real_escape_string($img);
+                                        // Same round-trip as mode 13: the slider form posts entities already stored in hottest_news.
+                                        $text = html_entity_decode($text);
                                         $text = mysql_real_escape_string($text);
+                                        $text = htmlentities($text);
 
                                         $img = $img . ".png";
-
-                                        $text = htmlentities($text);
 
                                         $sql = "UPDATE hottest_news SET title = '".$title."', image = '".$img."', text = '".$text."' WHERE id = ".$id."";
                                         $q = mysql_query($sql);
