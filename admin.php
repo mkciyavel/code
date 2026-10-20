@@ -514,87 +514,219 @@
                                     if(isset($_GET['action']) && $_GET['action'] == 2 && $session_right > 1)
                                     {
                                         $form = false;
+                                        $saved = false;
 
-                                        $userID = $_GET['id'];
-                                        $userID = mysql_real_escape_string($userID);
+                                        $rawID = (isset($_GET['id']) && is_string($_GET['id'])) ? $_GET['id'] : '';
+                                        $userID = (preg_match('/^[1-9]\d*$/', $rawID) === 1 && strlen($rawID) <= 10 && (int)$rawID <= 2147483647) ? (int)$rawID : 0;
 
-                                        if(isset($_POST['newms']))
+                                        $cur = false;
+                                        $hasRow = false;
+                                        $lookupFailed = false;
+                                        if($userID > 0)
                                         {
-                                            $ms = $_POST['newms'];
-                                            $ms = mysql_real_escape_string($ms);
-
-                                            $sql = "SELECT dwCash FROM TGLOBAL_GSP.dbo.TCASHTESTTABLE WHERE dwUserID = '".$userID."'";
-                                            $q = odbc_exec($gcon, $sql);
-                                            $count = odbc_num_rows($q);
-                                            if($count == 0)
+                                            $sqlCur = "SELECT dwCash, dwBonus FROM TGLOBAL_GSP.dbo.TCASHTESTTABLE WHERE dwUserID = '".$userID."'";
+                                            $qCur = odbc_exec($gcon, $sqlCur);
+                                            if($qCur === false)
                                             {
-                                                $sql0 = "INSERT INTO TGLOBAL_GSP.dbo.TCASHTESTTABLE (dwUserID, dwCash, dwBonus)
-                                                VALUES('".$userID."', '".$ms."', '0')";
+                                                $lookupFailed = true;
                                             }
                                             else
                                             {
-                                                $sql0 = "UPDATE TGLOBAL_GSP.dbo.TCASHTESTTABLE SET dwCash = '".$ms."' WHERE dwUserID = '".$userID."'";
+                                                $count = odbc_num_rows($qCur);
+                                                $cur = odbc_fetch_array($qCur);
+                                                if($cur || $count > 0)
+                                                {
+                                                    $hasRow = true;
+                                                }
                                             }
-                                            $q0 = odbc_exec($gcon, $sql0);
-
-                                            echo '<p>Die Mondsteine wurden erfolgreich ge&auml;ndert!<br /><br /><a href="./admin_cp.php?mode=7&id='.$userID.'">Zur&uuml;ck zur Account&uuml;bersicht</a></p>';
-                                            echo '<meta http-equiv="refresh" content="1; URL=./admin_cp.php?mode=7&id='.$userID.'">';
-
                                         }
-                                        if(!isset($_POST['newms']))
+
+                                        if(isset($_POST['newms']))
                                         {
+                                            $ms = (isset($_POST['newms']) && is_string($_POST['newms'])) ? trim($_POST['newms']) : '';
+                                            $msOk = preg_match('/^(?:0|[1-9]\d*)$/', $ms) === 1
+                                                && strlen($ms) <= 10
+                                                && (int)$ms <= 2147483647;
+
+                                            if($userID <= 0)
+                                            {
+                                                $error = 'Der Account existiert nicht!';
+                                            }
+                                            else if($lookupFailed)
+                                            {
+                                                $error = 'Die Mondsteine konnten nicht ge&auml;ndert werden!';
+                                            }
+                                            else if(!$msOk)
+                                            {
+                                                $error = 'Die Mondstein-Anzahl muss als ganze Zahl angegeben werden. Ein leeres Feld w&uuml;rde das Guthaben l&ouml;schen.';
+                                            }
+                                            else
+                                            {
+                                                $ms = (string)(int)$ms;
+                                                if(!$hasRow)
+                                                {
+                                                    $sql0 = "INSERT INTO TGLOBAL_GSP.dbo.TCASHTESTTABLE (dwUserID, dwCash, dwBonus)
+                                                    VALUES('".$userID."', '".$ms."', '0')";
+                                                }
+                                                else
+                                                {
+                                                    $sql0 = "UPDATE TGLOBAL_GSP.dbo.TCASHTESTTABLE SET dwCash = '".$ms."' WHERE dwUserID = '".$userID."'";
+                                                }
+                                                $q0 = odbc_exec($gcon, $sql0);
+
+                                                if($q0 === false)
+                                                {
+                                                    $error = 'Die Mondsteine konnten nicht ge&auml;ndert werden!';
+                                                }
+                                                else
+                                                {
+                                                    echo '<p>Die Mondsteine wurden erfolgreich ge&auml;ndert!<br /><br /><a href="./admin_cp.php?mode=7&id='.$userID.'">Zur&uuml;ck zur Account&uuml;bersicht</a></p>';
+                                                    echo '<meta http-equiv="refresh" content="1; URL=./admin_cp.php?mode=7&id='.$userID.'">';
+                                                    $saved = true;
+                                                }
+                                            }
+                                        }
+
+                                        if(!$saved)
+                                        {
+                                            if($userID <= 0 && !isset($error))
+                                            {
+                                                $error = 'Der Account existiert nicht!';
+                                            }
+                                            else if($lookupFailed && !isset($error))
+                                            {
+                                                $error = 'Die Mondsteine konnten nicht geladen werden!';
+                                            }
+
+                                            $msVal = isset($ms) ? $ms : (($cur && isset($cur['dwCash'])) ? $cur['dwCash'] : '0');
+                                            $msVal = htmlspecialchars((string)$msVal, ENT_QUOTES, 'UTF-8');
+
                                             echo '<h3><a href="admin_cp.php?mode=7&id='.$userID.'">&laquo; Zur&uuml;ck zur Account&uuml;bersicht</a></h3><br />';
                                             echo '<h4>Mondsteine bearbeiten</h4>';
-                                            echo '
-                                            <form action="admin_cp.php?mode=7&action=2&id='.$userID.'" method="post">
-                                            <label>Neue Mondstein-Anzahl <small><em>(required)</em></small></label>
-                                            <input type="text" name="newms" id="newms" /><br /><br />
-                                            <input type="submit" value="Mondsteine &uuml;bernehmen" class="read_more2" />
-                                            </form>
-                                            ';
+                                            if($userID > 0 && !$lookupFailed)
+                                            {
+                                                echo '
+                                                <form action="admin_cp.php?mode=7&action=2&id='.$userID.'" method="post">
+                                                <label>Neue Mondstein-Anzahl <small><em>(required)</em></small></label>
+                                                <input type="text" name="newms" id="newms" value="'.$msVal.'" /><br /><br />
+                                                <input type="submit" value="Mondsteine &uuml;bernehmen" class="read_more2" />
+                                                </form>
+                                                ';
+                                            }
+
+                                            if(isset($error))
+                                            {
+                                                echo '<br /><p>'.$error.'</p>';
+                                            }
                                         }
                                     }
                                     if(isset($_GET['action']) && $_GET['action'] == 3 && $session_right > 1)
                                     {
                                         $form = false;
+                                        $saved = false;
 
-                                        $userID = $_GET['id'];
-                                        $userID = mysql_real_escape_string($userID);
+                                        $rawID = (isset($_GET['id']) && is_string($_GET['id'])) ? $_GET['id'] : '';
+                                        $userID = (preg_match('/^[1-9]\d*$/', $rawID) === 1 && strlen($rawID) <= 10 && (int)$rawID <= 2147483647) ? (int)$rawID : 0;
 
-                                        if(isset($_POST['newbp']))
+                                        $cur = false;
+                                        $hasRow = false;
+                                        $lookupFailed = false;
+                                        if($userID > 0)
                                         {
-                                            $bp = $_POST['newbp'];
-                                            $bp = mysql_real_escape_string($bp);
-
-                                            $sql = "SELECT dwBonus FROM TGLOBAL_GSP.dbo.TCASHTESTTABLE WHERE dwUserID = '".$userID."'";
-                                            $q = odbc_exec($gcon, $sql);
-                                            $count = odbc_num_rows($q);
-                                            if($count == 0)
+                                            $sqlCur = "SELECT dwCash, dwBonus FROM TGLOBAL_GSP.dbo.TCASHTESTTABLE WHERE dwUserID = '".$userID."'";
+                                            $qCur = odbc_exec($gcon, $sqlCur);
+                                            if($qCur === false)
                                             {
-                                                $sql0 = "INSERT INTO TGLOBAL_GSP.dbo.TCASHTESTTABLE (dwUserID, dwCash, dwBonus)
-                                                VALUES('".$userID."', '0', '".$bp."')";
+                                                $lookupFailed = true;
                                             }
                                             else
                                             {
-                                                $sql0 = "UPDATE TGLOBAL_GSP.dbo.TCASHTESTTABLE SET dwBonus = '".$bp."' WHERE dwUserID = '".$userID."'";
+                                                $count = odbc_num_rows($qCur);
+                                                $cur = odbc_fetch_array($qCur);
+                                                if($cur || $count > 0)
+                                                {
+                                                    $hasRow = true;
+                                                }
                                             }
-                                            $q0 = odbc_exec($gcon, $sql0);
-
-                                            echo '<p>Die Bonuspunkte wurden erfolgreich ge&auml;ndert!<br /><br /><a href="./admin_cp.php?mode=7&id='.$userID.'">Zur&uuml;ck zur Account&uuml;bersicht</a></p>';
-                                            echo '<meta http-equiv="refresh" content="1; URL=./admin_cp.php?mode=7&id='.$userID.'">';
-
                                         }
-                                        if(!isset($_POST['newbp']))
+
+                                        if(isset($_POST['newbp']))
                                         {
+                                            $bp = (isset($_POST['newbp']) && is_string($_POST['newbp'])) ? trim($_POST['newbp']) : '';
+                                            $bpOk = preg_match('/^(?:0|[1-9]\d*)$/', $bp) === 1
+                                                && strlen($bp) <= 10
+                                                && (int)$bp <= 2147483647;
+
+                                            if($userID <= 0)
+                                            {
+                                                $error = 'Der Account existiert nicht!';
+                                            }
+                                            else if($lookupFailed)
+                                            {
+                                                $error = 'Die Bonuspunkte konnten nicht ge&auml;ndert werden!';
+                                            }
+                                            else if(!$bpOk)
+                                            {
+                                                $error = 'Die Bonuspunkt-Anzahl muss als ganze Zahl angegeben werden. Ein leeres Feld w&uuml;rde das Guthaben l&ouml;schen.';
+                                            }
+                                            else
+                                            {
+                                                $bp = (string)(int)$bp;
+                                                if(!$hasRow)
+                                                {
+                                                    $sql0 = "INSERT INTO TGLOBAL_GSP.dbo.TCASHTESTTABLE (dwUserID, dwCash, dwBonus)
+                                                    VALUES('".$userID."', '0', '".$bp."')";
+                                                }
+                                                else
+                                                {
+                                                    $sql0 = "UPDATE TGLOBAL_GSP.dbo.TCASHTESTTABLE SET dwBonus = '".$bp."' WHERE dwUserID = '".$userID."'";
+                                                }
+                                                $q0 = odbc_exec($gcon, $sql0);
+
+                                                if($q0 === false)
+                                                {
+                                                    $error = 'Die Bonuspunkte konnten nicht ge&auml;ndert werden!';
+                                                }
+                                                else
+                                                {
+                                                    echo '<p>Die Bonuspunkte wurden erfolgreich ge&auml;ndert!<br /><br /><a href="./admin_cp.php?mode=7&id='.$userID.'">Zur&uuml;ck zur Account&uuml;bersicht</a></p>';
+                                                    echo '<meta http-equiv="refresh" content="1; URL=./admin_cp.php?mode=7&id='.$userID.'">';
+                                                    $saved = true;
+                                                }
+                                            }
+                                        }
+
+                                        if(!$saved)
+                                        {
+                                            if($userID <= 0 && !isset($error))
+                                            {
+                                                $error = 'Der Account existiert nicht!';
+                                            }
+                                            else if($lookupFailed && !isset($error))
+                                            {
+                                                $error = 'Die Bonuspunkte konnten nicht geladen werden!';
+                                            }
+
+                                            $bpVal = isset($bp) ? $bp : (($cur && isset($cur['dwBonus'])) ? $cur['dwBonus'] : '0');
+                                            $bpVal = htmlspecialchars((string)$bpVal, ENT_QUOTES, 'UTF-8');
+
                                             echo '<h3><a href="admin_cp.php?mode=7&id='.$userID.'">&laquo; Zur&uuml;ck zur Account&uuml;bersicht</a></h3><br />';
                                             echo '<h4>Bonuspunkte bearbeiten</h4>';
-                                            echo '
-                                            <form action="admin_cp.php?mode=7&action=3&id='.$userID.'" method="post">
-                                            <label>Neue Bonuspunkt-Anzahl <small><em>(required)</em></small></label>
-                                            <input type="text" name="newbp" id="newbp" /><br /><br />
-                                            <input type="submit" value="Bonuspunkte &uuml;bernehmen" class="read_more2" />
-                                            </form>
-                                            ';
+                                            if($userID > 0 && !$lookupFailed)
+                                            {
+                                                echo '
+                                                <form action="admin_cp.php?mode=7&action=3&id='.$userID.'" method="post">
+                                                <label>Neue Bonuspunkt-Anzahl <small><em>(required)</em></small></label>
+                                                <input type="text" name="newbp" id="newbp" value="'.$bpVal.'" /><br /><br />
+                                                <input type="submit" value="Bonuspunkte &uuml;bernehmen" class="read_more2" />
+                                                </form>
+                                                ';
+                                            }
+
+                                            if(isset($error))
+                                            {
+                                                echo '<br /><p>'.$error.'</p>';
+                                            }
                                         }
                                     }
                                     if(isset($_GET['action']) && $_GET['action'] == 4)
