@@ -890,27 +890,117 @@
                                         }
                                         if(isset($_GET['action']) && $_GET['action'] == 11 && $session_right > 1)
                                         {
+                                            $saved = false;
+
+                                            $rawCid = (isset($_GET['cid']) && is_string($_GET['cid'])) ? $_GET['cid'] : '';
+                                            $charID = (preg_match('/^[1-9]\d*$/', $rawCid) === 1 && strlen($rawCid) <= 10 && (int)$rawCid <= 2147483647) ? (int)$rawCid : 0;
+
+                                            $currentName = '';
+                                            $found = false;
+                                            $lookupFailed = false;
+                                            if($charID > 0)
+                                            {
+                                                $sqlCur = "SELECT szName FROM TGAME_GSP.dbo.TCHARTABLE WHERE dwCharID = '".$charID."'";
+                                                $qCur = odbc_exec($gcon, $sqlCur);
+                                                if($qCur === false)
+                                                {
+                                                    $lookupFailed = true;
+                                                }
+                                                else
+                                                {
+                                                    $cur = odbc_fetch_array($qCur);
+                                                    if(is_array($cur) && array_key_exists('szName', $cur))
+                                                    {
+                                                        $found = true;
+                                                        $currentName = (string)$cur['szName'];
+                                                    }
+                                                }
+                                            }
+
                                             if(isset($_POST['newname']))
                                             {
-                                                $newname = $_POST['newname'];
+                                                $newname = (isset($_POST['newname']) && is_string($_POST['newname'])) ? trim($_POST['newname']) : '';
 
-                                                $sql = "UPDATE TGAME_GSP.dbo.TCHARTABLE SET szName = '".$newname."' WHERE dwCharID = '".$cID."'";
-                                                $q = odbc_exec($gcon, $sql);
-
-                                                echo '<p>Der Name wurde erfolgreich ge&auml;ndert!<br />
-                                                <a href="admin_cp.php?mode=8&cid='.$cID.'">&raquo; Zur&uuml;ck zur Charakter&uuml;bersicht</a></p>';
-                                                echo '<meta http-equiv="refresh" content="1; URL=./admin_cp.php?mode=8&cid='.$cID.'">';
+                                                if($lookupFailed || $charID <= 0 || !$found)
+                                                {
+                                                    $error = $lookupFailed ? 'Der Name konnte nicht ge&auml;ndert werden!' : 'Der Charakter existiert nicht!';
+                                                }
+                                                else if($newname === '')
+                                                {
+                                                    $error = 'Der Charaktername ist erforderlich. Ein leeres Feld w&uuml;rde den Namen l&ouml;schen.';
+                                                }
+                                                else if(preg_match('/[\x00-\x1F]/', $newname))
+                                                {
+                                                    $error = 'Der Charaktername ist ung&uuml;ltig!';
+                                                }
+                                                else
+                                                {
+                                                    $nameSql = str_replace("'", "''", $newname);
+                                                    $sqlDup = "SELECT dwCharID FROM TGAME_GSP.dbo.TCHARTABLE WHERE szName = '".$nameSql."' AND dwCharID <> '".$charID."'";
+                                                    $qDup = odbc_exec($gcon, $sqlDup);
+                                                    $dup = ($qDup !== false) ? odbc_fetch_array($qDup) : false;
+                                                    if($qDup === false)
+                                                    {
+                                                        $error = 'Der Name konnte nicht ge&auml;ndert werden!';
+                                                    }
+                                                    else if(is_array($dup))
+                                                    {
+                                                        $error = 'Der Charaktername existiert bereits!';
+                                                    }
+                                                    else
+                                                    {
+                                                        $sql = "UPDATE TGAME_GSP.dbo.TCHARTABLE SET szName = '".$nameSql."' WHERE dwCharID = '".$charID."'";
+                                                        $q = odbc_exec($gcon, $sql);
+                                                        if($q === false)
+                                                        {
+                                                            $error = 'Der Name konnte nicht ge&auml;ndert werden!';
+                                                        }
+                                                        else
+                                                        {
+                                                            echo '<p>Der Name wurde erfolgreich ge&auml;ndert!<br />
+                                                            <a href="admin_cp.php?mode=8&cid='.$charID.'">&raquo; Zur&uuml;ck zur Charakter&uuml;bersicht</a></p>';
+                                                            echo '<meta http-equiv="refresh" content="1; URL=./admin_cp.php?mode=8&cid='.$charID.'">';
+                                                            $saved = true;
+                                                        }
+                                                    }
+                                                }
                                             }
-                                            if(!isset($_POST['newname']))
+
+                                            if(!$saved)
                                             {
-                                                echo '<h3><a href="admin_cp.php?mode=8&cid='.$cID.'">&laquo; Zur&uuml;ck zur Charakter&uuml;bersicht</a></h3><br />';
-                                                echo '
-                                                 <form action="admin_cp.php?mode=8&action=11&cid='.$cID.'" method="post">
-                                                 <label>Charaktername </label>
-                                                 <input type="text" name="newname" id="newname" /><br /><br />
-                                                 <input type="submit" value="Namen &uuml;bernehmen" class="read_more2" />
-                                                 </form>
-                                                ';
+                                                if($charID <= 0 && !isset($error))
+                                                {
+                                                    $error = 'Der Charakter existiert nicht!';
+                                                }
+                                                else if($lookupFailed && !isset($error))
+                                                {
+                                                    $error = 'Der Name konnte nicht geladen werden!';
+                                                }
+                                                else if($charID > 0 && !$found && !isset($error))
+                                                {
+                                                    $error = 'Der Charakter existiert nicht!';
+                                                }
+
+                                                $nameVal = isset($newname) ? $newname : $currentName;
+                                                $nameVal = htmlspecialchars($nameVal, ENT_QUOTES, 'UTF-8');
+
+                                                echo '<h3><a href="admin_cp.php?mode=8&cid='.$charID.'">&laquo; Zur&uuml;ck zur Charakter&uuml;bersicht</a></h3><br />';
+                                                if($found && !$lookupFailed)
+                                                {
+                                                    echo '<h4>Charakter umbenennen</h4>';
+                                                    echo '
+                                                     <form action="admin_cp.php?mode=8&action=11&cid='.$charID.'" method="post">
+                                                     <label>Charaktername </label>
+                                                     <input type="text" name="newname" id="newname" value="'.$nameVal.'" /><br /><br />
+                                                     <input type="submit" value="Namen &uuml;bernehmen" class="read_more2" />
+                                                     </form>
+                                                    ';
+                                                }
+
+                                                if(isset($error))
+                                                {
+                                                    echo '<br /><p>'.$error.'</p>';
+                                                }
                                             }
                                         }
                                         if(!isset($_GET['action']))
