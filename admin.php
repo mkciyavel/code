@@ -2,6 +2,145 @@
     session_start();
     include("includes/config.php");
     include("includes/head.php");
+
+    function admin_char_id($raw)
+    {
+        if(!is_string($raw))
+            return 0;
+        if(preg_match('/^[1-9]\d*$/', $raw) !== 1)
+            return 0;
+        if(strlen($raw) > 10)
+            return 0;
+        $id = (int)$raw;
+        if($id > 2147483647)
+            return 0;
+        return $id;
+    }
+
+    function admin_whole_number($value, $max)
+    {
+        if(!is_string($value))
+            return false;
+        $value = trim($value);
+        if(preg_match('/^(?:0|[1-9]\d*)$/', $value) !== 1)
+            return false;
+        if(strlen($value) > 10)
+            return false;
+        if((int)$value > $max)
+            return false;
+        return (string)(int)$value;
+    }
+
+    function admin_stat_table($column)
+    {
+        $targets = array(
+            'dwTotalPoint' => 'TGAME_GSP.dbo.TPVPOINTTABLE',
+            'dwUseablePoint' => 'TGAME_GSP.dbo.TPVPOINTTABLE',
+            'dwExp' => 'TGAME_GSP.dbo.TCHARTABLE',
+            'wSkillPoint' => 'TGAME_GSP.dbo.TCHARTABLE',
+            'bLevel' => 'TGAME_GSP.dbo.TCHARTABLE',
+        );
+        if(!isset($targets[$column]))
+            return null;
+        return $targets[$column];
+    }
+
+    // SQL Server stores '' in an integer column as 0. The edit boxes used to
+    // post that empty string and report success, which wiped the stat.
+    function admin_save_whole_stat($gcon, $postKey, $column, $action, $fieldLabel, $submitLabel, $successText, $failText, $invalidText)
+    {
+        $table = admin_stat_table($column);
+        $action = (int)$action;
+        if(!is_string($postKey) || preg_match('/^[A-Za-z0-9_]+$/', $postKey) !== 1)
+            $postKey = '';
+        $charID = admin_char_id(isset($_GET['cid']) ? $_GET['cid'] : '');
+        $posted = isset($_POST[$postKey]);
+        $raw = ($posted && is_string($_POST[$postKey])) ? trim($_POST[$postKey]) : '';
+        $saved = false;
+        $lookupFailed = false;
+        $rowFound = false;
+        $curVal = '';
+        $error = null;
+
+        if($table !== null && $charID > 0)
+        {
+            $sqlCur = "SELECT ".$column." FROM ".$table." WHERE dwCharID = '".$charID."'";
+            $qCur = odbc_exec($gcon, $sqlCur);
+            if($qCur === false)
+            {
+                $lookupFailed = true;
+            }
+            else
+            {
+                $cur = odbc_fetch_array($qCur);
+                if(is_array($cur) && array_key_exists($column, $cur))
+                {
+                    $rowFound = true;
+                    $curVal = ($cur[$column] === null) ? '' : (string)$cur[$column];
+                }
+            }
+        }
+
+        if($posted)
+        {
+            $number = admin_whole_number($raw, 2147483647);
+            if($table === null || $charID <= 0)
+            {
+                $error = 'Der Charakter existiert nicht!';
+            }
+            else if($lookupFailed || !$rowFound)
+            {
+                $error = $failText;
+            }
+            else if($number === false)
+            {
+                $error = $invalidText;
+            }
+            else
+            {
+                $sql = "UPDATE ".$table." SET ".$column." = '".$number."' WHERE dwCharID = '".$charID."'";
+                $q = odbc_exec($gcon, $sql);
+                if($q === false)
+                {
+                    $error = $failText;
+                }
+                else
+                {
+                    echo '<p>'.$successText.'<br />
+                    <a href="admin_cp.php?mode=8&cid='.$charID.'">&raquo; Zur&uuml;ck zur Charakter&uuml;bersicht</a></p>';
+                    echo '<meta http-equiv="refresh" content="1; URL=./admin_cp.php?mode=8&cid='.$charID.'">';
+                    $saved = true;
+                }
+            }
+        }
+
+        if(!$saved)
+        {
+            if($error === null && ($table === null || $charID <= 0))
+                $error = 'Der Charakter existiert nicht!';
+            else if($error === null && ($lookupFailed || !$rowFound))
+                $error = $failText;
+
+            $back = ($charID > 0) ? 'admin_cp.php?mode=8&cid='.$charID : 'admin_cp.php?mode=8';
+            echo '<h3><a href="'.$back.'">&laquo; Zur&uuml;ck zur Charakter&uuml;bersicht</a></h3><br />';
+
+            if($charID > 0 && $rowFound && !$lookupFailed && $table !== null)
+            {
+                $shown = $posted ? $raw : $curVal;
+                $shown = htmlspecialchars($shown, ENT_QUOTES, 'UTF-8');
+                echo '
+                 <form action="admin_cp.php?mode=8&action='.$action.'&cid='.$charID.'" method="post">
+                 <label>'.$fieldLabel.' <small><em>(required)</em></small></label>
+                 <input type="text" name="'.$postKey.'" id="'.$postKey.'" value="'.$shown.'" /><br /><br />
+                 <input type="submit" value="'.$submitLabel.'" class="read_more2" />
+                 </form>
+                ';
+            }
+
+            if($error !== null)
+                echo '<br /><p>'.$error.'</p>';
+        }
+    }
 ?>
 
 <!--********************************************* Main start *********************************************-->
@@ -670,133 +809,43 @@
 
                                         if(isset($_GET['action']) && $_GET['action'] == 1 && $session_right > 1)
                                         {
-                                            if(isset($_POST['newtp']))
-                                            {
-                                                $newtp = $_POST['newtp'];
-                                                $newtp = mysql_real_escape_string($newtp);
-
-                                                $sql = "UPDATE TGAME_GSP.dbo.TPVPOINTTABLE SET dwTotalPoint = '".$newtp."' WHERE dwCharID = '".$cID."'";
-                                                $q = odbc_exec($gcon, $sql);
-
-                                                echo '<p>Die Ehre wurde erfolgreich ge&auml;ndert!<br />
-                                                <a href="admin_cp.php?mode=8&cid='.$cID.'">&raquo; Zur&uuml;ck zur Charakter&uuml;bersicht</a></p>';
-                                                echo '<meta http-equiv="refresh" content="1; URL=./admin_cp.php?mode=8&cid='.$cID.'">';
-                                            }
-                                            if(!isset($_POST['newtp']))
-                                            {
-                                                echo '<h3><a href="admin_cp.php?mode=8&cid='.$cID.'">&laquo; Zur&uuml;ck zur Charakter&uuml;bersicht</a></h3><br />';
-                                                echo '
-                                                 <form action="admin_cp.php?mode=8&action=1&cid='.$cID.'" method="post">
-                                                 <label>Ehre <small><em>(required)</em></small></label>
-                                                 <input type="text" name="newtp" id="newtp" /><br /><br />
-                                                 <input type="submit" value="Ehre &uuml;bernehmen" class="read_more2" />
-                                                 </form>
-                                                ';
-                                            }
+                                            admin_save_whole_stat($gcon, 'newtp', 'dwTotalPoint', 1,
+                                                'Ehre', 'Ehre &uuml;bernehmen',
+                                                'Die Ehre wurde erfolgreich ge&auml;ndert!',
+                                                'Die Ehre konnte nicht ge&auml;ndert werden!',
+                                                'Die Ehre muss als ganze Zahl angegeben werden. Ein leeres Feld w&uuml;rde den Wert auf 0 setzen.');
                                         }
                                         if(isset($_GET['action']) && $_GET['action'] == 2 && $session_right > 1)
                                         {
-                                            if(isset($_POST['newup']))
-                                            {
-                                                $newup = $_POST['newup'];
-                                                $newup = mysql_real_escape_string($newup);
-
-                                                $sql = "UPDATE TGAME_GSP.dbo.TPVPOINTTABLE SET dwUseablePoint = '".$newup."' WHERE dwCharID = '".$cID."'";
-                                                $q = odbc_exec($gcon, $sql);
-
-                                                echo '<p>Die Leistungspunkte wurden erfolgreich ge&auml;ndert!<br />
-                                                <a href="admin_cp.php?mode=8&cid='.$cID.'">&raquo; Zur&uuml;ck zur Charakter&uuml;bersicht</a></p>';
-                                                echo '<meta http-equiv="refresh" content="1; URL=./admin_cp.php?mode=8&cid='.$cID.'">';
-                                            }
-                                            if(!isset($_POST['newup']))
-                                            {
-                                                echo '<h3><a href="admin_cp.php?mode=8&cid='.$cID.'">&laquo; Zur&uuml;ck zur Charakter&uuml;bersicht</a></h3><br />';
-                                                echo '
-                                                 <form action="admin_cp.php?mode=8&action=2&cid='.$cID.'" method="post">
-                                                 <label>Leistungspunkte <small><em>(required)</em></small></label>
-                                                 <input type="text" name="newup" id="newup" /><br /><br />
-                                                 <input type="submit" value="Leistungspunkte &uuml;bernehmen" class="read_more2" />
-                                                 </form>
-                                                ';
-                                            }
+                                            admin_save_whole_stat($gcon, 'newup', 'dwUseablePoint', 2,
+                                                'Leistungspunkte', 'Leistungspunkte &uuml;bernehmen',
+                                                'Die Leistungspunkte wurden erfolgreich ge&auml;ndert!',
+                                                'Die Leistungspunkte konnten nicht ge&auml;ndert werden!',
+                                                'Die Leistungspunkte m&uuml;ssen als ganze Zahl angegeben werden. Ein leeres Feld w&uuml;rde den Wert auf 0 setzen.');
                                         }
                                         if(isset($_GET['action']) && $_GET['action'] == 3 && $session_right > 1)
                                         {
-                                            if(isset($_POST['newexp']))
-                                            {
-                                                $newexp = $_POST['newexp'];
-                                                $newexp = mysql_real_escape_string($newexp);
-
-                                                $sql = "UPDATE TGAME_GSP.dbo.TCHARTABLE SET dwExp = '".$newexp."' WHERE dwCharID = '".$cID."'";
-                                                $q = odbc_exec($gcon, $sql);
-
-                                                echo '<p>Die Erfahrungspunkte wurden erfolgreich ge&auml;ndert!<br />
-                                                <a href="admin_cp.php?mode=8&cid='.$cID.'">&raquo; Zur&uuml;ck zur Charakter&uuml;bersicht</a></p>';
-                                                echo '<meta http-equiv="refresh" content="1; URL=./admin_cp.php?mode=8&cid='.$cID.'">';
-                                            }
-                                            if(!isset($_POST['newexp']))
-                                            {
-                                                echo '<h3><a href="admin_cp.php?mode=8&cid='.$cID.'">&laquo; Zur&uuml;ck zur Charakter&uuml;bersicht</a></h3><br />';
-                                                echo '
-                                                 <form action="admin_cp.php?mode=8&action=3&cid='.$cID.'" method="post">
-                                                 <label>Erfahrungspunkte <small><em>(required)</em></small></label>
-                                                 <input type="text" name="newexp" id="newexp" /><br /><br />
-                                                 <input type="submit" value="Erfahrungspunkte &uuml;bernehmen" class="read_more2" />
-                                                 </form>
-                                                ';
-                                            }
+                                            admin_save_whole_stat($gcon, 'newexp', 'dwExp', 3,
+                                                'Erfahrungspunkte', 'Erfahrungspunkte &uuml;bernehmen',
+                                                'Die Erfahrungspunkte wurden erfolgreich ge&auml;ndert!',
+                                                'Die Erfahrungspunkte konnten nicht ge&auml;ndert werden!',
+                                                'Die Erfahrungspunkte m&uuml;ssen als ganze Zahl angegeben werden. Ein leeres Feld w&uuml;rde den Wert auf 0 setzen.');
                                         }
                                         if(isset($_GET['action']) && $_GET['action'] == 4 && $session_right > 1)
                                         {
-                                            if(isset($_POST['newsp']))
-                                            {
-                                                $newsp = $_POST['newsp'];
-                                                $newsp = mysql_real_escape_string($newsp);
-
-                                                $sql = "UPDATE TGAME_GSP.dbo.TCHARTABLE SET wSkillPoint = '".$newsp."' WHERE dwCharID = '".$cID."'";
-                                                $q = odbc_exec($gcon, $sql);
-
-                                                echo '<p>Die Skillpunkte wurden erfolgreich ge&auml;ndert!<br />
-                                                <a href="admin_cp.php?mode=8&cid='.$cID.'">&raquo; Zur&uuml;ck zur Charakter&uuml;bersicht</a></p>';
-                                                echo '<meta http-equiv="refresh" content="1; URL=./admin_cp.php?mode=8&cid='.$cID.'">';
-                                            }
-                                            if(!isset($_POST['newsp']))
-                                            {
-                                                echo '<h3><a href="admin_cp.php?mode=8&cid='.$cID.'">&laquo; Zur&uuml;ck zur Charakter&uuml;bersicht</a></h3><br />';
-                                                echo '
-                                                 <form action="admin_cp.php?mode=8&action=4&cid='.$cID.'" method="post">
-                                                 <label>Skillpunkte <small><em>(required)</em></small></label>
-                                                 <input type="text" name="newsp" id="newsp" /><br /><br />
-                                                 <input type="submit" value="Skillpunkte &uuml;bernehmen" class="read_more2" />
-                                                 </form>
-                                                ';
-                                            }
+                                            admin_save_whole_stat($gcon, 'newsp', 'wSkillPoint', 4,
+                                                'Skillpunkte', 'Skillpunkte &uuml;bernehmen',
+                                                'Die Skillpunkte wurden erfolgreich ge&auml;ndert!',
+                                                'Die Skillpunkte konnten nicht ge&auml;ndert werden!',
+                                                'Die Skillpunkte m&uuml;ssen als ganze Zahl angegeben werden. Ein leeres Feld w&uuml;rde den Wert auf 0 setzen.');
                                         }
                                         if(isset($_GET['action']) && $_GET['action'] == 5 && $session_right > 1)
                                         {
-                                            if(isset($_POST['newlvl']))
-                                            {
-                                                $newlvl = $_POST['newlvl'];
-                                                $newlvl = mysql_real_escape_string($newlvl);
-
-                                                $sql = "UPDATE TGAME_GSP.dbo.TCHARTABLE SET bLevel = '".$newlvl."' WHERE dwCharID = '".$cID."'";
-                                                $q = odbc_exec($gcon, $sql);
-
-                                                echo '<p>Das Level wurde erfolgreich ge&auml;ndert!<br />
-                                                <a href="admin_cp.php?mode=8&cid='.$cID.'">&raquo; Zur&uuml;ck zur Charakter&uuml;bersicht</a></p>';
-                                                echo '<meta http-equiv="refresh" content="1; URL=./admin_cp.php?mode=8&cid='.$cID.'">';
-                                            }
-                                            if(!isset($_POST['newlvl']))
-                                            {
-                                                echo '<h3><a href="admin_cp.php?mode=8&cid='.$cID.'">&laquo; Zur&uuml;ck zur Charakter&uuml;bersicht</a></h3><br />';
-                                                echo '
-                                                 <form action="admin_cp.php?mode=8&action=5&cid='.$cID.'" method="post">
-                                                 <label>Neues Level <small><em>(required)</em></small></label>
-                                                 <input type="text" name="newlvl" id="newlvl" /><br /><br />
-                                                 <input type="submit" value="Level &uuml;bernehmen" class="read_more2" />
-                                                 </form>
-                                                ';
-                                            }
+                                            admin_save_whole_stat($gcon, 'newlvl', 'bLevel', 5,
+                                                'Neues Level', 'Level &uuml;bernehmen',
+                                                'Das Level wurde erfolgreich ge&auml;ndert!',
+                                                'Das Level konnte nicht ge&auml;ndert werden!',
+                                                'Das Level muss als ganze Zahl angegeben werden. Ein leeres Feld w&uuml;rde das Level auf 0 setzen.');
                                         }
                                         if(isset($_GET['action']) && $_GET['action'] == 6 && $session_right > 1)
                                         {
