@@ -437,24 +437,37 @@
                                     {
                                         if(!isset($_GET['id']))
                                         {
-                                            $userName = $_POST['username'];
-                                            $userName = mysql_real_escape_string($userName);
-
-                                            $sql = "SELECT dwUserID FROM TGLOBAL_GSP.dbo.TACCOUNT WHERE szUserID = '".$userName."'";
-                                            $q = odbc_exec($gcon, $sql);
+                                            $userName = trim($_POST['username']);
+                                            if($userName === '')
+                                            {
+                                                $q = false;
+                                            }
+                                            else
+                                            {
+                                                $userSql = str_replace("'", "''", $userName);
+                                                $sql = "SELECT dwUserID FROM TGLOBAL_GSP.dbo.TACCOUNT WHERE szUserID = '".$userSql."'";
+                                                $q = odbc_exec($gcon, $sql);
+                                            }
                                         }
                                         else
                                         {
                                             $userID = $_GET['id'];
-                                            $userID = mysql_real_escape_string($userID);
-
-                                            $sql = "SELECT szUserID FROM TGLOBAL_GSP.dbo.TACCOUNT WHERE dwUserID = ".$userID."";
-                                            $q = odbc_exec($gcon, $sql);
-                                            $dat = odbc_fetch_array($q);
-                                            $userName = $dat['szUserID'];
+                                            if(!preg_match('/^[0-9]+$/', (string)$userID))
+                                            {
+                                                $q = false;
+                                                $userName = '';
+                                            }
+                                            else
+                                            {
+                                                $userID = (string)(int)$userID;
+                                                $sql = "SELECT szUserID FROM TGLOBAL_GSP.dbo.TACCOUNT WHERE dwUserID = ".$userID."";
+                                                $q = odbc_exec($gcon, $sql);
+                                                $dat = ($q !== false) ? odbc_fetch_array($q) : false;
+                                                $userName = (is_array($dat) && isset($dat['szUserID'])) ? $dat['szUserID'] : '';
+                                            }
                                         }
 
-                                        if(odbc_num_rows($q) != 0 || isset($_GET['id']))
+                                        if($q !== false && (odbc_num_rows($q) != 0 || isset($_GET['id'])))
                                         {
                                             if(!isset($_GET['id']))
                                             {
@@ -1303,11 +1316,10 @@
                                         $start = $page * $entry - $entry;
 
                                         $charName = $_GET['s'];
-
-                                        $charName = mysql_real_escape_string($charName);
+                                        $charSql = str_replace("'", "''", $charName);
 
                                         $sql = "SELECT TOP ".$entry." * FROM
-                                        (SELECT TOP ".($start + $entry)." dwCharID, szName, bSex, bCountry, bRace, bClass, bHair, bFace, bLevel FROM TGAME_GSP.dbo.TCHARTABLE WHERE szName LIKE '%".$charName."%' ORDER BY dwCharID ASC)
+                                        (SELECT TOP ".($start + $entry)." dwCharID, szName, bSex, bCountry, bRace, bClass, bHair, bFace, bLevel FROM TGAME_GSP.dbo.TCHARTABLE WHERE szName LIKE '%".$charSql."%' ORDER BY dwCharID ASC)
                                         AS TChar ORDER BY dwCharID DESC";
                                         $q = odbc_exec($gcon, $sql);
 
@@ -1321,7 +1333,7 @@
                                         </tr>
                                         </thead><tbody>';
 
-                                        if(odbc_num_rows($q) != 0)
+                                        if($q !== false && odbc_num_rows($q) != 0)
                                         {
                                             while($dat = odbc_fetch_array($q))
                                             {
@@ -1819,36 +1831,51 @@
                                     $form = true;
                                     if(isset($_POST['username']))
                                     {
-                                        $user = $_POST['username'];
+                                        $user = trim($_POST['username']);
+                                        $userSql = str_replace("'", "''", $user);
 
-                                        $sql0 = "SELECT dwCharID FROM TGAME_GSP.dbo.TCHARTABLE WHERE szName = '".$user."'";
-                                        $q0 = odbc_exec($gcon, $sql0);
-                                        if(odbc_num_rows($q0) != 0)
+                                        if($user === '')
                                         {
-                                            $cID = odbc_fetch_array($q0);
-                                            $cID = $cID['dwCharID'];
-
-                                            $sql = "SELECT dwCharID FROM TGLOBAL_GSP.dbo.TCURRENTUSER WHERE dwCharID = '".$cID."'";
-                                            $q = odbc_exec($gcon, $sql);
-                                            $cOnline = odbc_num_rows($q);
-
-                                            if($cOnline == 0)
-                                            {
-                                                $sql1 = "EXEC TGAME_GSP.dbo.TTESTGmItemGive @szName = '".$user."'";
-                                                $q1 = odbc_exec($gcon, $sql1);
-
-                                                echo '<p>Das GM-Equipment wurde erfolgreich vergeben!<br /><a href="admin_cp.php">&raquo; Zur&uuml;ck zum Admin-Panel</a></p>';
-                                                echo '<meta http-equiv="refresh" content="1; URL=./admin_cp.php">';
-                                                $form = false;
-                                            }
-                                            else
-                                            {
-                                                $error = 'Der Charakter muss ausgeloggt sein, um das GM-Equipment zu vergeben.';
-                                            }
+                                            $error = 'Der Charakter existiert nicht.';
                                         }
                                         else
                                         {
-                                            $error = 'Der Charakter existiert nicht.';
+                                            $sql0 = "SELECT dwCharID FROM TGAME_GSP.dbo.TCHARTABLE WHERE szName = '".$userSql."'";
+                                            $q0 = odbc_exec($gcon, $sql0);
+                                            $cRow = ($q0 !== false && odbc_num_rows($q0) != 0) ? odbc_fetch_array($q0) : false;
+                                            if(!is_array($cRow) || !isset($cRow['dwCharID']))
+                                            {
+                                                $error = 'Der Charakter existiert nicht.';
+                                            }
+                                            else
+                                            {
+                                                $cID = (int)$cRow['dwCharID'];
+
+                                                $sql = "SELECT dwCharID FROM TGLOBAL_GSP.dbo.TCURRENTUSER WHERE dwCharID = '".$cID."'";
+                                                $q = odbc_exec($gcon, $sql);
+                                                $cOnline = ($q !== false) ? odbc_num_rows($q) : 0;
+
+                                                if($cOnline == 0)
+                                                {
+                                                    $sql1 = "EXEC TGAME_GSP.dbo.TTESTGmItemGive @szName = '".$userSql."'";
+                                                    $q1 = odbc_exec($gcon, $sql1);
+
+                                                    if($q1 === false)
+                                                    {
+                                                        $error = 'Das GM-Equipment konnte nicht vergeben werden.';
+                                                    }
+                                                    else
+                                                    {
+                                                        echo '<p>Das GM-Equipment wurde erfolgreich vergeben!<br /><a href="admin_cp.php">&raquo; Zur&uuml;ck zum Admin-Panel</a></p>';
+                                                        echo '<meta http-equiv="refresh" content="1; URL=./admin_cp.php">';
+                                                        $form = false;
+                                                    }
+                                                }
+                                                else
+                                                {
+                                                    $error = 'Der Charakter muss ausgeloggt sein, um das GM-Equipment zu vergeben.';
+                                                }
+                                            }
                                         }
                                     }
 
@@ -2175,15 +2202,16 @@
                         if(isset($_GET['mode']) && $_GET['mode'] == 8 && !isset($_GET['cid']) && !isset($_GET['id']) && isset($_GET['s']))
                         {
                             $charName = $_GET['s'];
-                            $charName = mysql_real_escape_string($charName);
+                            $charSql = str_replace("'", "''", $charName);
+                            $charLink = urlencode($charName);
 
-                            $q00 = odbc_exec($gcon, "SELECT dwUserID FROM TGAME_GSP.dbo.TCHARTABLE WHERE szName LIKE '%".$charName."%'");
-                            $count = odbc_num_rows($q00);
-                            $pages = $count / $entry;
+                            $q00 = odbc_exec($gcon, "SELECT dwUserID FROM TGAME_GSP.dbo.TCHARTABLE WHERE szName LIKE '%".$charSql."%'");
+                            $count = ($q00 !== false) ? odbc_num_rows($q00) : 0;
+                            $pages = ($entry > 0) ? ($count / $entry) : 0;
                             if($page > 1)
                             {
                                 $page_back = $page - 1;
-                                echo '<li><a href="?p='.$page_back.'&mode=8&s='.$charName.'" ><img alt="" src="./images/left_pager.jpg" border="0"/></a></li>';
+                                echo '<li><a href="?p='.$page_back.'&mode=8&s='.$charLink.'" ><img alt="" src="./images/left_pager.jpg" border="0"/></a></li>';
                             }
                             for($a=0; $a < $pages; $a++)
                             {
@@ -2194,13 +2222,13 @@
                                 }
                                 else
                                 {
-                                    echo '<li><a href="?p='.$b.'&mode=8&s='.$charName.'">'.$b.'</a></li>';
+                                    echo '<li><a href="?p='.$b.'&mode=8&s='.$charLink.'">'.$b.'</a></li>';
                                 }
                             }
                             if($page < $pages)
                             {
                                 $page_for = $page + 1;
-                                echo '<li><a href="?p='.$page_for.'&mode=8&s='.$charName.'"><img alt="" src="./images/right_pager.jpg" border="0"/></a></li>';
+                                echo '<li><a href="?p='.$page_for.'&mode=8&s='.$charLink.'"><img alt="" src="./images/right_pager.jpg" border="0"/></a></li>';
                             }
                         }
                       ?>
