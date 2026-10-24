@@ -2,6 +2,20 @@
     session_start();
     include("includes/config.php");
     include("includes/head.php");
+
+    function admin_row_id($raw)
+    {
+        if(!is_string($raw))
+            return 0;
+        if(preg_match('/^[1-9]\d*$/', $raw) !== 1)
+            return 0;
+        if(strlen($raw) > 10)
+            return 0;
+        $id = (int)$raw;
+        if($id < 1 || $id > 2147483647)
+            return 0;
+        return $id;
+    }
 ?>
 
 <!--********************************************* Main start *********************************************-->
@@ -236,31 +250,49 @@
 
                                     if(isset($_GET['id']))
                                     {
-                                        $id = $_GET['id'];
+                                        $id = admin_row_id(is_string($_GET['id']) ? $_GET['id'] : '');
 
-                                        echo '
-                                        <form action="admin_cp.php?mode=4" method="post">
-                                        <label>Entg&uuml;ltig l&ouml;schen?</label>
-                                        <input type="hidden" name="id" id="id" value="'.$id.'" /><br /><br />
-                                        <input type="submit" value="L&ouml;schen" class="read_more2" />
-                                        </form>
-                                        ';
+                                        if($id === 0)
+                                        {
+                                            echo '<p>Der Eintrag konnte nicht gel&ouml;scht werden.<br /><a href="./admin_cp.php?mode=4">&raquo; Zur&uuml;ck zur L&ouml;sch-Ansicht</a></p>';
+                                        }
+                                        else
+                                        {
+                                            echo '
+                                            <form action="admin_cp.php?mode=4" method="post">
+                                            <label>Entg&uuml;ltig l&ouml;schen?</label>
+                                            <input type="hidden" name="id" id="id" value="'.$id.'" /><br /><br />
+                                            <input type="submit" value="L&ouml;schen" class="read_more2" />
+                                            </form>
+                                            ';
+                                        }
                                         $form = false;
                                     }
 
                                     if(isset($_POST['id']))
                                     {
-                                        $id = $_POST['id'];
+                                        $id = admin_row_id(is_string($_POST['id']) ? $_POST['id'] : '');
 
-                                        $sql = "DELETE FROM news WHERE id = '".$id."'";
-                                        $q = mysql_query($sql);
+                                        if($id === 0)
+                                        {
+                                            echo '<p>Der Eintrag konnte nicht gel&ouml;scht werden.<br /><a href="./admin_cp.php?mode=4">&raquo; Zur&uuml;ck zur L&ouml;sch-Ansicht</a></p>';
+                                        }
+                                        else
+                                        {
+                                            $sql = "DELETE FROM news WHERE id = ".$id;
+                                            $q = mysql_query($sql);
 
-                                        //$sql0 = "ALTER TABLE `news` AUTO_INCREMENT = 0";
-                                        //$q0 = mysql_query($sql0);
-
-                                        echo '<p>Die News wurden erfolgreich gel&ouml;scht!<br /><a href="./admin_cp.php">&raquo; Zur&uuml;ck zum Admin-Panel</a>
-                                        <br /><a href="./admin_cp.php?mode=4">&raquo; Zur&uuml;ck zur L&ouml;sch-Ansicht</a></p>';
-                                        echo '<meta http-equiv="refresh" content="1; URL=./admin_cp.php?mode=4.php">';
+                                            if($q)
+                                            {
+                                                echo '<p>Die News wurden erfolgreich gel&ouml;scht!<br /><a href="./admin_cp.php">&raquo; Zur&uuml;ck zum Admin-Panel</a>
+                                                <br /><a href="./admin_cp.php?mode=4">&raquo; Zur&uuml;ck zur L&ouml;sch-Ansicht</a></p>';
+                                                echo '<meta http-equiv="refresh" content="1; URL=./admin_cp.php?mode=4.php">';
+                                            }
+                                            else
+                                            {
+                                                echo '<p>Der Eintrag konnte nicht gel&ouml;scht werden.<br /><a href="./admin_cp.php?mode=4">&raquo; Zur&uuml;ck zur L&ouml;sch-Ansicht</a></p>';
+                                            }
+                                        }
                                         $form = false;
                                     }
 
@@ -1502,57 +1534,86 @@
 
                                             if(isset($_POST['itemID']))
                                             {
-                                                $itemID = $_POST['itemID'];
-                                                $itemName = $_POST['itemName'];
-                                                $amount = $_POST['itemAmount'];
-                                                $text = $_POST['itemText'];
-                                                $price = $_POST['itemPrice'];
+                                                $rowId = admin_row_id(is_string($id) ? $id : '');
+                                                $itemID = isset($_POST['itemID']) ? $_POST['itemID'] : '';
+                                                $itemName = isset($_POST['itemName']) ? $_POST['itemName'] : '';
+                                                $amount = isset($_POST['itemAmount']) ? $_POST['itemAmount'] : '';
+                                                $text = isset($_POST['itemText']) ? $_POST['itemText'] : '';
+                                                $price = isset($_POST['itemPrice']) ? $_POST['itemPrice'] : '';
 
-                                                $itemID = mysql_real_escape_string($itemID);
-                                                $itemName = mysql_real_escape_string($itemName);
-                                                $amount = mysql_real_escape_string($amount);
-                                                $text = mysql_real_escape_string($text);
-                                                $price = mysql_real_escape_string($price);
+                                                if($rowId === 0 || !is_string($itemID) || !is_string($itemName) || !is_string($amount) || !is_string($text) || !is_string($price))
+                                                {
+                                                    echo '<p>Das Item konnte nicht ge&auml;ndert werden.<br /><a href="admin_cp.php?mode=10">&raquo; Zur&uuml;ck zur Cashshop-&Uuml;bersicht</a></p>';
+                                                }
+                                                else
+                                                {
+                                                    $itemID = mysql_real_escape_string($itemID);
+                                                    $itemName = mysql_real_escape_string($itemName);
+                                                    $amount = mysql_real_escape_string($amount);
+                                                    $text = mysql_real_escape_string($text);
+                                                    $price = mysql_real_escape_string($price);
 
-                                                $sql = "UPDATE cashshop SET ItemID = '".$itemID."', ItemName = '".$itemName."', Amount = '".$amount."', Text = '".$text."',
-                                                Price = '".$price."' WHERE ID = '".$id."'";
-                                                $q = mysql_query($sql);
+                                                    $sql = "UPDATE cashshop SET ItemID = '".$itemID."', ItemName = '".$itemName."', Amount = '".$amount."', Text = '".$text."',
+                                                    Price = '".$price."' WHERE ID = ".$rowId;
+                                                    $q = mysql_query($sql);
 
-                                                echo '<p>Das Item wurde erfolgreich ge&auml;ndert!<br /><a href="admin_cp.php">&raquo; Zur&uuml;ck zum Admin-Panel</a>
-                                                <br /><a href="admin_cp.php?mode=10">&raquo; Zur&uuml;ck zur Cashshop-&Uuml;bersicht</a></p>';
+                                                    if($q)
+                                                    {
+                                                        echo '<p>Das Item wurde erfolgreich ge&auml;ndert!<br /><a href="admin_cp.php">&raquo; Zur&uuml;ck zum Admin-Panel</a>
+                                                        <br /><a href="admin_cp.php?mode=10">&raquo; Zur&uuml;ck zur Cashshop-&Uuml;bersicht</a></p>';
+                                                    }
+                                                    else
+                                                    {
+                                                        echo '<p>Das Item konnte nicht ge&auml;ndert werden.<br /><a href="admin_cp.php?mode=10">&raquo; Zur&uuml;ck zur Cashshop-&Uuml;bersicht</a></p>';
+                                                    }
+                                                }
 
                                                 $form = false;
                                             }
                                             else
                                             {
-                                                $id = mysql_real_escape_string($id);
+                                                $rowId = admin_row_id(is_string($id) ? $id : '');
 
-                                                $sql = "SELECT itemID, itemName, amount, text, price FROM cashshop WHERE ID = '".$id."'";
-                                                $q = mysql_query($sql);
-                                                $dat = mysql_fetch_assoc($q);
+                                                if($rowId === 0)
+                                                {
+                                                    echo '<p>Das Item konnte nicht ge&auml;ndert werden.<br /><a href="admin_cp.php?mode=10&action=1">&raquo; Zur&uuml;ck zur Item-&Uuml;bersicht</a></p>';
+                                                }
+                                                else
+                                                {
+                                                    $sql = "SELECT itemID, itemName, amount, text, price FROM cashshop WHERE ID = ".$rowId;
+                                                    $q = mysql_query($sql);
+                                                    $dat = mysql_fetch_assoc($q);
 
-                                                $itemID = $dat['itemID'];
-                                                $itemName = $dat['itemName'];
-                                                $amount = $dat['amount'];
-                                                $text = $dat['text'];
-                                                $price = $dat['price'];
+                                                    if(!is_array($dat))
+                                                    {
+                                                        echo '<p>Das Item konnte nicht ge&auml;ndert werden.<br /><a href="admin_cp.php?mode=10&action=1">&raquo; Zur&uuml;ck zur Item-&Uuml;bersicht</a></p>';
+                                                    }
+                                                    else
+                                                    {
+                                                        $itemID = $dat['itemID'];
+                                                        $itemName = $dat['itemName'];
+                                                        $amount = $dat['amount'];
+                                                        $text = $dat['text'];
+                                                        $price = $dat['price'];
 
-                                                echo '<h3><a href="admin_cp.php?mode=10&action=1">&laquo; Zur&uuml;ck zur Item-&Uuml;bersicht</a></h3><br />';
-                                                echo '<h4>Item bearbeiten</h4>
-                                                <form action="admin_cp.php?mode=10&action=1&id='.$id.'" method="post">
-                                                <label>ItemID <small><em>(required)</em></small></label>
-                                                <input type="text" name="itemID" id="itemID" value="'.$itemID.'" />
-                                                <label>Itemname <small><em>(required)</em></small></label>
-                                                <input type="text" name="itemName" id="itemName" value="'.$itemName.'" />
-                                                <label>Anzahl <small><em>(required)</em></small></label>
-                                                <input type="text" name="itemAmount" id="itemAmount" value="'.$amount.'" />
-                                                <label>Preis <small><em>(required)</em></small></label>
-                                                <input type="text" name="itemPrice" id="itemPrice" value="'.$price.'" />
-                                                <label>Text <small><em>(required)</em></small></label>
-                                                <textarea cols="65" name="itemText" id="itemText">'.$text.'</textarea><br /><br />
-                                                <input type="submit" value="&Auml;nderungen speichern" class="read_more2" />
-                                                </form>
-                                                ';
+                                                        echo '<h3><a href="admin_cp.php?mode=10&action=1">&laquo; Zur&uuml;ck zur Item-&Uuml;bersicht</a></h3><br />';
+                                                        echo '<h4>Item bearbeiten</h4>
+                                                        <form action="admin_cp.php?mode=10&action=1&id='.$rowId.'" method="post">
+                                                        <label>ItemID <small><em>(required)</em></small></label>
+                                                        <input type="text" name="itemID" id="itemID" value="'.$itemID.'" />
+                                                        <label>Itemname <small><em>(required)</em></small></label>
+                                                        <input type="text" name="itemName" id="itemName" value="'.$itemName.'" />
+                                                        <label>Anzahl <small><em>(required)</em></small></label>
+                                                        <input type="text" name="itemAmount" id="itemAmount" value="'.$amount.'" />
+                                                        <label>Preis <small><em>(required)</em></small></label>
+                                                        <input type="text" name="itemPrice" id="itemPrice" value="'.$price.'" />
+                                                        <label>Text <small><em>(required)</em></small></label>
+                                                        <textarea cols="65" name="itemText" id="itemText">'.$text.'</textarea><br /><br />
+                                                        <input type="submit" value="&Auml;nderungen speichern" class="read_more2" />
+                                                        </form>
+                                                        ';
+                                                    }
+                                                }
 
                                                 $form = false;
                                             }
@@ -1875,40 +1936,64 @@
                                     $form = true;
                                     if(isset($_POST['title']))
                                     {
-                                        $id = $_GET['id'];
+                                        $id = admin_row_id((isset($_GET['id']) && is_string($_GET['id'])) ? $_GET['id'] : '');
+                                        $type = (isset($_POST['type']) && is_string($_POST['type'])) ? $_POST['type'] : '';
+                                        $title = isset($_POST['title']) ? $_POST['title'] : '';
+                                        $img = isset($_POST['img']) ? $_POST['img'] : '';
+                                        $text = isset($_POST['text']) ? $_POST['text'] : '';
 
-                                        $title = $_POST['title'];
-                                        $type = $_POST['type'];
-                                        $img = $_POST['img'];
-                                        $text = $_POST['text'];
+                                        if($id === 0 || ($type !== '0' && $type !== '1') || !is_string($title) || !is_string($img) || !is_string($text))
+                                        {
+                                            echo '<p>Die News konnten nicht ge&auml;ndert werden.<br /><a href="admin_cp.php?mode=13">Zur&uuml;ck zur Bearbeitung</a></p>';
+                                        }
+                                        else
+                                        {
+                                            $title = mysql_real_escape_string($title);
+                                            $img = mysql_real_escape_string($img);
+                                            $text = mysql_real_escape_string($text);
 
-                                        $title = mysql_real_escape_string($title);
-                                        $img = mysql_real_escape_string($img);
-                                        $text = mysql_real_escape_string($text);
+                                            $img = $img . ".png";
 
-                                        $img = $img . ".png";
+                                            $text = htmlentities($text);
 
-                                        $text = htmlentities($text);
+                                            $sql = "UPDATE news SET hot = '".$type."', title = '".$title."', image = '".$img."', text = '".$text."' WHERE id = ".$id;
+                                            $q = mysql_query($sql);
 
-                                        $sql = "UPDATE news SET hot = '".$type."', title = '".$title."', image = '".$img."', text = '".$text."' WHERE id = ".$id."";
-                                        $q = mysql_query($sql);
-
-                                        echo '<p>Die News wurden erfolgreich ge&auml;ndert! <br /><a href="admin_cp.php">Zur&uuml;ck zum Admin-CP</a></p>';
-                                        echo '<meta http-equiv="refresh" content="1; url=admin_cp.php">';
+                                            if($q)
+                                            {
+                                                echo '<p>Die News wurden erfolgreich ge&auml;ndert! <br /><a href="admin_cp.php">Zur&uuml;ck zum Admin-CP</a></p>';
+                                                echo '<meta http-equiv="refresh" content="1; url=admin_cp.php">';
+                                            }
+                                            else
+                                            {
+                                                echo '<p>Die News konnten nicht ge&auml;ndert werden.<br /><a href="admin_cp.php?mode=13">Zur&uuml;ck zur Bearbeitung</a></p>';
+                                            }
+                                        }
 
                                         $form = false;
                                     }
 
                                     if(isset($_GET['id']) && !isset($_POST['title']))
                                     {
-                                        $id = $_GET['id'];
+                                        $id = admin_row_id(is_string($_GET['id']) ? $_GET['id'] : '');
 
-                                        $id = mysql_real_escape_string($id);
-
-                                        $sql = "SELECT hot, title, text, image FROM news WHERE ID = ".$id."";
+                                        if($id === 0)
+                                        {
+                                            echo '<p>Die News konnten nicht ge&auml;ndert werden.<br /><a href="admin_cp.php?mode=13">Zur&uuml;ck zur Bearbeitung</a></p>';
+                                            $form = false;
+                                        }
+                                        else
+                                        {
+                                        $sql = "SELECT hot, title, text, image FROM news WHERE ID = ".$id;
                                         $q = mysql_query($sql);
                                         $dat = mysql_fetch_assoc($q);
 
+                                        if(!is_array($dat))
+                                        {
+                                            echo '<p>Die News konnten nicht ge&auml;ndert werden.<br /><a href="admin_cp.php?mode=13">Zur&uuml;ck zur Bearbeitung</a></p>';
+                                        }
+                                        else
+                                        {
                                         $title = $dat['title'];
                                         $text = $dat['text'];
                                         $img = $dat['image'];
@@ -1938,8 +2023,10 @@
                                         <input type="submit" value="News &auml;ndern" class="read_more2" />
                                         </form>
                                         ';
+                                        }
 
                                         $form = false;
+                                        }
                                     }
 
                                     if($form)
@@ -1965,39 +2052,63 @@
                                     $form = true;
                                     if(isset($_POST['title']))
                                     {
-                                        $id = $_GET['id'];
+                                        $id = admin_row_id((isset($_GET['id']) && is_string($_GET['id'])) ? $_GET['id'] : '');
+                                        $title = isset($_POST['title']) ? $_POST['title'] : '';
+                                        $img = isset($_POST['img']) ? $_POST['img'] : '';
+                                        $text = isset($_POST['text']) ? $_POST['text'] : '';
 
-                                        $title = $_POST['title'];
-                                        $img = $_POST['img'];
-                                        $text = $_POST['text'];
+                                        if($id === 0 || !is_string($title) || !is_string($img) || !is_string($text))
+                                        {
+                                            echo '<p>Die News konnten nicht ge&auml;ndert werden.<br /><a href="admin_cp.php?mode=14">Zur&uuml;ck zur Bearbeitung</a></p>';
+                                        }
+                                        else
+                                        {
+                                            $title = mysql_real_escape_string($title);
+                                            $img = mysql_real_escape_string($img);
+                                            $text = mysql_real_escape_string($text);
 
-                                        $title = mysql_real_escape_string($title);
-                                        $img = mysql_real_escape_string($img);
-                                        $text = mysql_real_escape_string($text);
+                                            $img = $img . ".png";
 
-                                        $img = $img . ".png";
+                                            $text = htmlentities($text);
 
-                                        $text = htmlentities($text);
+                                            $sql = "UPDATE hottest_news SET title = '".$title."', image = '".$img."', text = '".$text."' WHERE id = ".$id;
+                                            $q = mysql_query($sql);
 
-                                        $sql = "UPDATE hottest_news SET title = '".$title."', image = '".$img."', text = '".$text."' WHERE id = ".$id."";
-                                        $q = mysql_query($sql);
-
-                                        echo '<p>Die News wurden erfolgreich ge&auml;ndert! <br /><a href="admin_cp.php">Zur&uuml;ck zum Admin-CP</a></p>';
-                                        echo '<meta http-equiv="refresh" content="1; url=admin_cp.php">';
+                                            if($q)
+                                            {
+                                                echo '<p>Die News wurden erfolgreich ge&auml;ndert! <br /><a href="admin_cp.php">Zur&uuml;ck zum Admin-CP</a></p>';
+                                                echo '<meta http-equiv="refresh" content="1; url=admin_cp.php">';
+                                            }
+                                            else
+                                            {
+                                                echo '<p>Die News konnten nicht ge&auml;ndert werden.<br /><a href="admin_cp.php?mode=14">Zur&uuml;ck zur Bearbeitung</a></p>';
+                                            }
+                                        }
 
                                         $form = false;
                                     }
 
                                     if(isset($_GET['id']) && !isset($_POST['title']))
                                     {
-                                        $id = $_GET['id'];
+                                        $id = admin_row_id(is_string($_GET['id']) ? $_GET['id'] : '');
 
-                                        $id = mysql_real_escape_string($id);
-
-                                        $sql = "SELECT title, text, image FROM hottest_news WHERE ID = ".$id."";
+                                        if($id === 0)
+                                        {
+                                            echo '<p>Die News konnten nicht ge&auml;ndert werden.<br /><a href="admin_cp.php?mode=14">Zur&uuml;ck zur Bearbeitung</a></p>';
+                                            $form = false;
+                                        }
+                                        else
+                                        {
+                                        $sql = "SELECT title, text, image FROM hottest_news WHERE ID = ".$id;
                                         $q = mysql_query($sql);
                                         $dat = mysql_fetch_assoc($q);
 
+                                        if(!is_array($dat))
+                                        {
+                                            echo '<p>Die News konnten nicht ge&auml;ndert werden.<br /><a href="admin_cp.php?mode=14">Zur&uuml;ck zur Bearbeitung</a></p>';
+                                        }
+                                        else
+                                        {
                                         $title = $dat['title'];
                                         $text = $dat['text'];
                                         $img = $dat['image'];
@@ -2018,8 +2129,10 @@
                                         <input type="submit" value="News &auml;ndern" class="read_more2" />
                                         </form>
                                         ';
+                                        }
 
                                         $form = false;
+                                        }
                                     }
 
                                     if($form)
