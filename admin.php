@@ -800,57 +800,121 @@
                                         }
                                         if(isset($_GET['action']) && $_GET['action'] == 6 && $session_right > 1)
                                         {
+                                            $rawCid = (isset($_GET['cid']) && is_string($_GET['cid'])) ? $_GET['cid'] : '';
+                                            $charID = 0;
+                                            if(preg_match('/^[1-9]\d*$/', $rawCid) === 1 && strlen($rawCid) <= 10)
+                                            {
+                                                $charID = (int)$rawCid;
+                                                if($charID < 1 || $charID > 2147483647)
+                                                {
+                                                    $charID = 0;
+                                                }
+                                            }
+
                                             if(isset($_POST['newrace']))
                                             {
-                                                $newrace = $_POST['newrace'];
-                                                $newrace = mysql_real_escape_string($newrace);
+                                                $newrace = (isset($_POST['newrace']) && is_string($_POST['newrace'])) ? $_POST['newrace'] : '';
+                                                if($charID === 0 || ($newrace !== '0' && $newrace !== '1' && $newrace !== '2'))
+                                                {
+                                                    echo '<p>Die Rasse konnte nicht ge&auml;ndert werden.<br />
+                                                    <a href="admin_cp.php?mode=8">&raquo; Zur&uuml;ck zur Charaktersuche</a></p>';
+                                                }
+                                                else
+                                                {
+                                                    $sql = "UPDATE TGAME_GSP.dbo.TCHARTABLE SET bRace = '".$newrace."' WHERE dwCharID = '".$charID."'";
+                                                    $q = odbc_exec($gcon, $sql);
 
-                                                $sql = "UPDATE TGAME_GSP.dbo.TCHARTABLE SET bRace = '".$newrace."' WHERE dwCharID = '".$cID."'";
-                                                $q = odbc_exec($gcon, $sql);
-
-                                                echo '<p>Die Rasse wurde erfolgreich ge&auml;ndert!<br />
-                                                <a href="admin_cp.php?mode=8&cid='.$cID.'">&raquo; Zur&uuml;ck zur Charakter&uuml;bersicht</a></p>';
-                                                echo '<meta http-equiv="refresh" content="1; URL=./admin_cp.php?mode=8&cid='.$cID.'">';
+                                                    if($q === false)
+                                                    {
+                                                        echo '<p>Die Rasse konnte nicht ge&auml;ndert werden.<br />
+                                                        <a href="admin_cp.php?mode=8&cid='.$charID.'">&raquo; Zur&uuml;ck zur Charakter&uuml;bersicht</a></p>';
+                                                    }
+                                                    else
+                                                    {
+                                                        echo '<p>Die Rasse wurde erfolgreich ge&auml;ndert!<br />
+                                                        <a href="admin_cp.php?mode=8&cid='.$charID.'">&raquo; Zur&uuml;ck zur Charakter&uuml;bersicht</a></p>';
+                                                        echo '<meta http-equiv="refresh" content="1; URL=./admin_cp.php?mode=8&cid='.$charID.'">';
+                                                    }
+                                                }
                                             }
                                             if(!isset($_POST['newrace']))
                                             {
-                                                echo '<h3><a href="admin_cp.php?mode=8&cid='.$cID.'">&laquo; Zur&uuml;ck zur Charakter&uuml;bersicht</a></h3><br />';
-                                                echo '
-                                                 <form action="admin_cp.php?mode=8&action=6&cid='.$cID.'" method="post">
-                                                 <label>Neue Rasse <small><em>(required)</em></small></label>
-                                                 Mensch<input type="radio" name="newrace" id="newrace" value="0" /><br />
-                                                 Feline&nbsp;&nbsp;&nbsp;<input type="radio" name="newrace" id="newrace" value="1" /><br />
-                                                 Fee&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<input type="radio" name="newrace" id="newrace" value="2" /><br /><br />
-                                                 <input type="submit" value="Rasse &uuml;bernehmen" class="read_more2" />
-                                                 </form>
-                                                ';
+                                                if($charID === 0)
+                                                {
+                                                    echo '<p>Der Charakter existiert nicht!</p>';
+                                                }
+                                                else
+                                                {
+                                                    echo '<h3><a href="admin_cp.php?mode=8&cid='.$charID.'">&laquo; Zur&uuml;ck zur Charakter&uuml;bersicht</a></h3><br />';
+                                                    echo '
+                                                     <form action="admin_cp.php?mode=8&action=6&cid='.$charID.'" method="post">
+                                                     <label>Neue Rasse <small><em>(required)</em></small></label>
+                                                     Mensch<input type="radio" name="newrace" id="newrace" value="0" /><br />
+                                                     Feline&nbsp;&nbsp;&nbsp;<input type="radio" name="newrace" id="newrace" value="1" /><br />
+                                                     Fee&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<input type="radio" name="newrace" id="newrace" value="2" /><br /><br />
+                                                     <input type="submit" value="Rasse &uuml;bernehmen" class="read_more2" />
+                                                     </form>
+                                                    ';
+                                                }
                                             }
                                         }
                                         if(isset($_GET['action']) && $_GET['action'] == 8 && $session_right > 1)
                                         {
+                                            $rawCid = (isset($_GET['cid']) && is_string($_GET['cid'])) ? $_GET['cid'] : '';
+                                            $charID = 0;
+                                            if(preg_match('/^[1-9]\d*$/', $rawCid) === 1 && strlen($rawCid) <= 10)
+                                            {
+                                                $charID = (int)$rawCid;
+                                                if($charID < 1 || $charID > 2147483647)
+                                                {
+                                                    $charID = 0;
+                                                }
+                                            }
+
                                             if(isset($_POST['newsex']))
                                             {
-                                                $newsex = $_POST['newsex'];
-                                                $newsex = mysql_real_escape_string($newsex);
+                                                $newsex = (isset($_POST['newsex']) && is_string($_POST['newsex'])) ? $_POST['newsex'] : '';
+                                                if($charID === 0 || ($newsex !== '0' && $newsex !== '1'))
+                                                {
+                                                    echo '<p>Das Geschlecht konnte nicht ge&auml;ndert werden.<br />
+                                                    <a href="admin_cp.php?mode=8">&raquo; Zur&uuml;ck zur Charaktersuche</a></p>';
+                                                }
+                                                else
+                                                {
+                                                    $sql = "UPDATE TGAME_GSP.dbo.TCHARTABLE SET bSex = '".$newsex."' WHERE dwCharID = '".$charID."'";
+                                                    $q = odbc_exec($gcon, $sql);
 
-                                                $sql = "UPDATE TGAME_GSP.dbo.TCHARTABLE SET bSex = '".$newsex."' WHERE dwCharID = '".$cID."'";
-                                                $q = odbc_exec($gcon, $sql);
-
-                                                echo '<p>Das Geschlecht wurde erfolgreich ge&auml;ndert!<br />
-                                                <a href="admin_cp.php?mode=8&cid='.$cID.'">&raquo; Zur&uuml;ck zur Charakter&uuml;bersicht</a></p>';
-                                                echo '<meta http-equiv="refresh" content="1; URL=./admin_cp.php?mode=8&cid='.$cID.'">';
+                                                    if($q === false)
+                                                    {
+                                                        echo '<p>Das Geschlecht konnte nicht ge&auml;ndert werden.<br />
+                                                        <a href="admin_cp.php?mode=8&cid='.$charID.'">&raquo; Zur&uuml;ck zur Charakter&uuml;bersicht</a></p>';
+                                                    }
+                                                    else
+                                                    {
+                                                        echo '<p>Das Geschlecht wurde erfolgreich ge&auml;ndert!<br />
+                                                        <a href="admin_cp.php?mode=8&cid='.$charID.'">&raquo; Zur&uuml;ck zur Charakter&uuml;bersicht</a></p>';
+                                                        echo '<meta http-equiv="refresh" content="1; URL=./admin_cp.php?mode=8&cid='.$charID.'">';
+                                                    }
+                                                }
                                             }
                                             if(!isset($_POST['newsex']))
                                             {
-                                                echo '<h3><a href="admin_cp.php?mode=8&cid='.$cID.'">&laquo; Zur&uuml;ck zur Charakter&uuml;bersicht</a></h3><br />';
-                                                echo '
-                                                 <form action="admin_cp.php?mode=8&action=8&cid='.$cID.'" method="post">
-                                                 <label>Neues Geschlecht <small><em>(required)</em></small></label>
-                                                 M&auml;nnlich<input type="radio" name="newsex" id="newsex" value="0" /><br />
-                                                 Weiblich<input type="radio" name="newsex" id="newsex" value="1" /><br /><br />
-                                                 <input type="submit" value="Geschlecht &uuml;bernehmen" class="read_more2" />
-                                                 </form>
-                                                ';
+                                                if($charID === 0)
+                                                {
+                                                    echo '<p>Der Charakter existiert nicht!</p>';
+                                                }
+                                                else
+                                                {
+                                                    echo '<h3><a href="admin_cp.php?mode=8&cid='.$charID.'">&laquo; Zur&uuml;ck zur Charakter&uuml;bersicht</a></h3><br />';
+                                                    echo '
+                                                     <form action="admin_cp.php?mode=8&action=8&cid='.$charID.'" method="post">
+                                                     <label>Neues Geschlecht <small><em>(required)</em></small></label>
+                                                     M&auml;nnlich<input type="radio" name="newsex" id="newsex" value="0" /><br />
+                                                     Weiblich<input type="radio" name="newsex" id="newsex" value="1" /><br /><br />
+                                                     <input type="submit" value="Geschlecht &uuml;bernehmen" class="read_more2" />
+                                                     </form>
+                                                    ';
+                                                }
                                             }
                                         }
                                         if(isset($_GET['action']) && $_GET['action'] == 10 && $session_right > 1)
