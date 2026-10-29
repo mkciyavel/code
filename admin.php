@@ -855,7 +855,14 @@
                                         }
                                         if(isset($_GET['action']) && $_GET['action'] == 10 && $session_right > 1)
                                         {
-                                            if(isset($_POST['newgold']))
+                                            $rawCid = (isset($_GET['cid']) && is_string($_GET['cid'])) ? $_GET['cid'] : '';
+                                            $moneyCharID = (preg_match('/^[1-9]\d*$/', $rawCid) === 1 && strlen($rawCid) <= 10 && (int)$rawCid <= 2147483647) ? (int)$rawCid : 0;
+
+                                            if($moneyCharID <= 0)
+                                            {
+                                                echo '<p>Der Charakter existiert nicht!</p>';
+                                            }
+                                            else if(isset($_POST['newgold']))
                                             {
                                                 $newgold = $_POST['newgold'];
                                                 $newsilver = $_POST['newsilver'];
@@ -865,18 +872,18 @@
                                                 $newcooper = mysql_real_escape_string($newcooper);
 
                                                 $sql = "UPDATE TGAME_GSP.dbo.TCHARTABLE SET dwGold = '".$newgold."', dwSilver = '".$newsilver."', dwCooper = '".$newcooper."'
-                                                WHERE dwCharID = '".$cID."'";
+                                                WHERE dwCharID = '".$moneyCharID."'";
                                                 $q = odbc_exec($gcon, $sql);
 
                                                 echo '<p>Das Geld wurde erfolgreich ge&auml;ndert!<br />
-                                                <a href="admin_cp.php?mode=8&cid='.$cID.'">&raquo; Zur&uuml;ck zur Charakter&uuml;bersicht</a></p>';
-                                                echo '<meta http-equiv="refresh" content="1; URL=./admin_cp.php?mode=8&cid='.$cID.'">';
+                                                <a href="admin_cp.php?mode=8&cid='.$moneyCharID.'">&raquo; Zur&uuml;ck zur Charakter&uuml;bersicht</a></p>';
+                                                echo '<meta http-equiv="refresh" content="1; URL=./admin_cp.php?mode=8&cid='.$moneyCharID.'">';
                                             }
-                                            if(!isset($_POST['newgold']))
+                                            else
                                             {
-                                                echo '<h3><a href="admin_cp.php?mode=8&cid='.$cID.'">&laquo; Zur&uuml;ck zur Charakter&uuml;bersicht</a></h3><br />';
+                                                echo '<h3><a href="admin_cp.php?mode=8&cid='.$moneyCharID.'">&laquo; Zur&uuml;ck zur Charakter&uuml;bersicht</a></h3><br />';
                                                 echo '
-                                                 <form action="admin_cp.php?mode=8&action=10&cid='.$cID.'" method="post">
+                                                 <form action="admin_cp.php?mode=8&action=10&cid='.$moneyCharID.'" method="post">
                                                  <label>Gold </label>
                                                  <input type="text" name="newgold" id="newgold" />
                                                  <label>Silber </label>
